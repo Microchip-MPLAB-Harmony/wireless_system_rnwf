@@ -16,33 +16,22 @@ This repository contains the MPLAB® Harmony 3 replaceme solutions and example a
 - [Release Notes](./release_notes.md)
 - [MPLAB® Harmony License](Microchip_SLA001.md)
 - [MPLAB® Harmony 3 replaceme API Help](https://microchip-mplab-harmony.github.io/replaceme)
+- [MQTT System Service](system\RNWF_mqtt\docs\readme.md)
+- [Net System Service](system\RNWF_net\docs\readme.md)
+- [Wi-Fi System Service](system\RNWF_wifi\docs\readme.md)
+- [Provision System Service](system\RNWF_wifiprov\docs\readme.md)
+- [OTA System Service](system\RNWF_ota\docs\readme.md)
 
 # Contents Summary
 
 | Folder     | Description                                               |
 | ---        | ---                                                       |
-| apps       | Example applications for replaceme library components     |
-| config     | replaceme module configuration file                       |
-| docs       | replaceme library help documentation                      |
-| drivers    | Driver/Firmware files for different products              |
+| system       | Contains RNWF02 Wireless service code and configuration files.    |
+| docs       | Contains documentation in html format for offline viewing (to be used only after cloning this repository onto a local machine). Use [github pages](https://github.com/Microchip-MPLAB-Harmony/wireless_system_rnwf) of this repository for viewing it online.                      |
 
 
-____
+# Code Example
 
-[![License](https://img.shields.io/badge/license-Harmony%20license-orange.svg)](https://github.com/Microchip-MPLAB-Harmony/replaceme/blob/master/mplab_harmony_license.md)
-[![Latest release](https://img.shields.io/github/release/Microchip-MPLAB-Harmony/replaceme.svg)](https://github.com/Microchip-MPLAB-Harmony/replaceme/releases/latest)
-[![Latest release date](https://img.shields.io/github/release-date/Microchip-MPLAB-Harmony/replaceme.svg)](https://github.com/Microchip-MPLAB-Harmony/replaceme/releases/latest)
-[![Commit activity](https://img.shields.io/github/commit-activity/y/Microchip-MPLAB-Harmony/replaceme.svg)](https://github.com/Microchip-MPLAB-Harmony/replaceme/graphs/commit-activity)
-[![Contributors](https://img.shields.io/github/contributors-anon/Microchip-MPLAB-Harmony/replaceme.svg)]()
-
-____
-
-[![Follow us on Youtube](https://img.shields.io/badge/Youtube-Follow%20us%20on%20Youtube-red.svg)](https://www.youtube.com/user/MicrochipTechnology)
-[![Follow us on LinkedIn](https://img.shields.io/badge/LinkedIn-Follow%20us%20on%20LinkedIn-blue.svg)](https://www.linkedin.com/company/microchip-technology)
-[![Follow us on Facebook](https://img.shields.io/badge/Facebook-Follow%20us%20on%20Facebook-blue.svg)](https://www.facebook.com/microchiptechnology/)
-[![Follow us on Twitter](https://img.shields.io/twitter/follow/MicrochipTech.svg?style=social)](https://twitter.com/MicrochipTech)
-
-[![](https://img.shields.io/github/stars/Microchip-MPLAB-Harmony/replaceme.svg?style=social)]()
-[![](https://img.shields.io/github/watchers/Microchip-MPLAB-Harmony/replaceme.svg?style=social)]()
+Wireless subsystem code examples for RMWF02 can be found in the [wireless_apps_rnwf](https://github.com/Microchip-MPLAB-Harmony/wireless_apps_rnwf) repo.
 
 

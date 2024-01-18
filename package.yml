@@ -1,13 +1,22 @@
 package:
   format-version: "1.0.0"
-  name: "replaceme"
-  type: "api"
-  status: "beta"
-  required: false
+  name: "wireless_system_rnwf"
+  type: "application"
+  status: "production"
+  required: true
   version: "1.0.0"
-
+  
   dependencies:
     - name: "csp"
       type: "package"
-      version: "3.14.0"
+      version: "v3.18.1"
+    - name: "core"
+      type: "package"
+      version: "v3.13.1"
+    - name: "bsp"
+      type: "package"
+      version: "v3.17.0"
+    - name: "CMSIS_5"
+      type: "package"
+      version: "5.9.0" 
 
