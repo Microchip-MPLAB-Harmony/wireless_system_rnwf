@@ -1,10 +1,10 @@
 package:
   format-version: "1.0.0"
   name: "wireless_system_rnwf"
-  type: "application"
+  type: "api"
   status: "production"
-  required: true
-  version: "1.0.0"
+  required: false
+  version: "v1.0.0"
   
   dependencies:
     - name: "csp"
@@ -16,7 +16,4 @@ package:
     - name: "bsp"
       type: "package"
       version: "v3.17.0"
-    - name: "CMSIS_5"
-      type: "package"
-      version: "5.9.0" 
 
