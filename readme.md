@@ -20,7 +20,7 @@ Refer to the following links for release notes, license and more information abo
 
 - [MPLAB® Harmony License](Microchip_SLA001.md)
 
-## RNWF System Services
+## RNWF02 System Services
 
 - [Wi-Fi System Service](system/Wifi/docs/readme.md)
 
