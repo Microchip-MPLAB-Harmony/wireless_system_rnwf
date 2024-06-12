@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<Module name="Wireless system service for RNWF02 Add on board" id="77142a9eb-45a0-4065-80b0-9faab9366102" version="1.0.0">
+<Module name="Wireless system service for RNWF02 and WINCS02 Add on board" id="77142a9eb-45a0-4065-80b0-9faab9366102" version="2.0.0">
     <ConfigRoot path="config/module.py"/>
 </Module>
