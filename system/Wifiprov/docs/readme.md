@@ -1,12 +1,12 @@
 # Provisioning Service
 
-The provisioning service helps to configure the Wi-Fi interface credentials. It<br /> supports TCP tunnel and Web server based provisioning services. It implements or handles<br /> all the required AT commands to start the module in Access Point mode and open up a TCP<br /> tunnel or serve a HTML web page to receive the Wi-Fi credentials. The provisioning<br /> service call API syntax is provided below:<br />
+The provisioning service helps to configure the Wi-Fi interface credentials. It supports TCP tunnel and Web server based provisioning services. It implements or handles all the required AT commands to start the module in Access Point mode and open up a TCP tunnel or serve a HTML web page to receive the Wi-Fi credentials. The provisioning service call API syntax is provided below:
 
 ``` {#CODEBLOCK_GL5_RSC_PYB .language-c}
 SYS_RNWF_RESULT_t SYS_RNWF_PROV_SrvCtrl(SYS_RNWF_PROV_SERVICE_t request, void *input)
 ```
 
-[**Provisioning Service Configuration in MCC**](GUID-CE9CEDFD-5FD4-4BC4-AB96-17647C430816.md#GUID-63799930-4AE7-47C4-AF9F-0EC46895DC81)
+[**Provisioning Service Configuration in MCC**](../../RNWF_wifi/docs/readme.md)
 
 The provisioning service provides the following options for the user:
 
@@ -16,7 +16,7 @@ The provisioning service provides the following options for the user:
 |`SYS_RNWF_PROV_DISABLE`|None|Disables the provisioning service|
 |`SYS_RNWF_PROV_SET_CALLBACK`|Callback handler|Registers the application callback function to report the<br /> provisioning status|
 
-The following list captures the provisioning service callback event codes and<br /> their arguments
+The following list captures the provisioning service callback event codes and their arguments
 
 |Event|Response Components|Remarks|
 |:----|-------------------|:------|
@@ -25,7 +25,7 @@ The following list captures the provisioning service callback event codes and<br
 
 The provisioning service sequence is provided below:
 
-![](images\GUID-D0460872-69F5-4E62-979F-E41E383E625D-low.png "Provisioning Service Sequence")
+![Provisioning Service Sequence](images/GUID-D0460872-69F5-4E62-979F-E41E383E625D-low.png)
 
 Following example code showcases the use of provisioning service
 
@@ -35,6 +35,34 @@ Following example code showcases the use of provisioning service
 /*
     Provisioning application
 */
+
+#include <string.h>
+#include <stdio.h>
+#include <stddef.h>                    
+#include <stdbool.h>                    
+#include <stdlib.h>                    
+
+/* This section lists the other files that are included in this file.*/
+#include "app.h"
+#include "user.h"
+#include "definitions.h"      
+#include "configuration.h"
+#include "system/debug/sys_debug.h"
+#include "system/inf/sys_rnwf_interface.h"
+#include "system/net/sys_rnwf_net_service.h"
+#include "system/sys_rnwf_system_service.h"
+#include "system/wifi/sys_rnwf_wifi_service.h"
+#include "system/wifiprov/sys_rnwf_provision_service.h"
+
+
+/* DMAC Channel Handler Function */
+static void APP_RNWF_usartDmaChannelHandler ( DMAC_TRANSFER_EVENT event, uintptr_t contextHandle)
+{
+    if (event == DMAC_TRANSFER_EVENT_COMPLETE)
+    {
+        g_isUARTTxComplete = true;
+    }
+}
 
 /* Application Wifi Callback Handler function */
 static void SYS_RNWF_WIFI_CallbackHandler ( SYS_RNWF_WIFI_EVENT_t event, uint8_t *p_str)
@@ -57,9 +85,16 @@ static void SYS_RNWF_WIFI_CallbackHandler ( SYS_RNWF_WIFI_EVENT_t event, uint8_t
         }
         
         /* Wi-Fi DHCP complete event code*/
-        case SYS_RNWF_DHCP_DONE:
+        case SYS_RNWF_IPv4_DHCP_DONE:
         {
-            SYS_CONSOLE_PRINT("DHCP IP:%s\r\n", &p_str[2]); 
+            SYS_CONSOLE_PRINT("IPv4 DHCP Done...%s \r\n",&p_str[2]); 
+            break;
+        }
+        
+        /* Wi-Fi IPv6 DHCP complete event code*/
+        case SYS_RNWF_IPv6_DHCP_DONE:
+        {
+            SYS_CONSOLE_PRINT("IPv6 DHCP Done...%s \r\n",&p_str[2]); 
             break;
         }
         
@@ -96,8 +131,7 @@ static void SYS_RNWF_WIFIPROV_CallbackHandler ( SYS_RNWF_PROV_EVENT_t event, uin
         {
             break;
         }
-    }
-    
+    } 
 }
 
 
@@ -127,9 +161,6 @@ void APP_Tasks ( void )
         /* Register the necessary callbacks */
         case APP_STATE_REGISTER_CALLBACK:
         {
-            uint8_t certList[512];
-            SYS_RNWF_SYSTEM_SrvCtrl(SYS_RNWF_SYSTEM_GET_CERT_LIST, certList);
-            SYS_CONSOLE_PRINT("%s\n", certList);
 
             // Enable Provisioning Mode
             SYS_RNWF_PROV_SrvCtrl(SYS_RNWF_PROV_ENABLE, NULL);
@@ -151,5 +182,10 @@ void APP_Tasks ( void )
         }
     }
 }
+
+/*******************************************************************************
+ End of File
+ */
+
 
 ```

@@ -8,15 +8,25 @@ SYS_RNWF_RESULT_t SYS_RNWF_NET_SOCK_SrvCtrl( SYS_RNWF_NET_SOCK_SERVICE_t request
 
 **Net System Service Configuration in MCC**
 
-![](images\GUID-9702D23E-F09D-47B2-BB69-CD248BB15442-low.png "Net Sock Settings")
+![Net Sock Settings](images/GUID-9702D23E-F09D-47B2-BB69-CD248BB15442-low.png)
 <br />
 
 This section allows NET service basic configuration as mentioned below:
--   **Bind type:** Selection of binding type.
--   **Socket Port:** Socket port number.
--   **Ip Protocol:** TCP/UDP protocol selection.
--   **Socket address:** Enter the respective server IP address.
+-   **Number of Sockets:** Configure this field in the range of 1-2.
 -   **Mode:** Server/Client Mode Selection
+-   **Ip Protocol:** TCP/UDP protocol selection.
+-   **IP Type :** Select IP type : IPv4 / IPv6 Local / IPv6 Global.
+-   **Server address:** Enter the respective server IP address.
+-   **Socket Port:** Socket port number.
+-   **Enable TLS:** Select to enable TLS Configuration option.  
+     - **Peer authentication**
+        - **Root CA / Server Certificate**
+     - **Device Certificate**
+     - **Device Key**
+     - **Device Key Password**
+     - **Server Name**
+     -  **Domain Name Verify**
+        - **Domain Name**
 
 The Net service provides the following services for the user:
 
@@ -31,6 +41,8 @@ The Net service provides the following services for the user:
 |`SYS_RNWF_NET_SOCK_CLOSE`|Socket ID \(Int\)|Close the socket|
 |`SYS_RNWF_NET_SOCK_CONFIG`|Socket ID<br /> No delay, Keep alive|Configures the socket settings|
 |`SYS_RNWF_NET_SOCK_SET_CALLBACK`|Callback function handler|Register application callback for<br /> socket|
+|`SYS_RNWF_NET_SOCK_SET_SRVC_CALLBACK`|Callback function handler|Register application callback for sockets|
+|`SYS_RNWF_NET_SOCK_GET_CALLBACK`|Callback function handler|Get Function callback data|
 
 The events that are returned in the Net socket service are provided below:
 
@@ -44,7 +56,7 @@ The events that are returned in the Net socket service are provided below:
 
 The basic net socket service sequence chart is provided below:
 
-![](images\GUID-0A702E26-3F5C-4DA1-8255-56AB4AA0515C-low.png "Basic Net Socket Service Sequence Chart")
+![Basic Net Socket Service Sequence Chart](images/GUID-0A702E26-3F5C-4DA1-8255-56AB4AA0515C-low.png)
 
 **Socket Write**
 
@@ -87,73 +99,169 @@ Some of the configurations can be configured by MCC.
     Main application
 */
 
-uint8_t tcp_client_msg[] = "Type here!\r\n";
+#include <string.h>
+#include <stdio.h>
+#include <stddef.h>                    
+#include <stdbool.h>                  
+#include <stdlib.h>   
 
-/* TCP Socket */
-SYS_RNWF_NET_SOCKET_t tcp_client_socket = {
-        .bind_type = SYS_RNWF_NET_BIND_TYPE,
-        .sock_port = SYS_RNWF_NET_SOCK_PORT,
-        .sock_type = SYS_RNWF_NET_SOCK_TYPE,
-        .sock_addr = SYS_RNWF_NET_SOCK_ADDR,
-        };
+/* This section lists the other files that are included in this file.*/
+#include "app.h"
+#include "user.h"
+#include "definitions.h"
+#include "configuration.h"
+#include "system/debug/sys_debug.h"
+#include "system/wifi/sys_rnwf_wifi_service.h"
+#include "system/inf/sys_rnwf_interface.h"
+#include "system/net/sys_rnwf_net_service.h"
+
+/* Variable to check the UART transfer */
+static volatile bool g_isUARTTxComplete = true,isUART0TxComplete = true;;
+
+/*Shows the he application's current state*/
+static APP_DATA g_appData;
+
+/*Application buffer to store data*/
+static uint8_t g_appBuf[SYS_RNWF_IF_LEN_MAX];
+
+/*Message send to TCP client*/
+static uint8_t g_tcpClientMsg[] = "Type here!\r\n";
+
+/*TCP client socket configurations*/
+static SYS_RNWF_NET_SOCKET_t g_tcpServerSocket = {
+        .bind_type = SYS_RNWF_NET_BIND_TYPE0,
+        .sock_port = SYS_RNWF_NET_SOCK_PORT0,
+        .sock_type = SYS_RNWF_NET_SOCK_TYPE0,
+		.sock_addr = SYS_RNWF_NET_SOCK_ADDR0,
+        .IP        = SYS_RNWF_NET_IPV4,
+};
 
 
-void APP_WIFI_Callback(SYS_RNWF_WIFI_EVENT_t event, uint8_t *p_str)
+/* DMAC Channel Handler Function */
+static void APP_RNWF_usartDmaChannelHandler(DMAC_TRANSFER_EVENT event, uintptr_t contextHandle)
+{
+    if (event == DMAC_TRANSFER_EVENT_COMPLETE)
+    {
+        g_isUARTTxComplete = true;
+    }
+}
+
+
+/* Application Wi-fi Callback Handler function */
+void SYS_RNWF_WIFI_CallbackHandler(SYS_RNWF_WIFI_EVENT_t event, uint8_t *p_str)
 {
             
     switch(event)
-    {   
+    {
+        /* SNTP UP event code*/
+        case SYS_RNWF_SNTP_UP:
+        {            
+            SYS_CONSOLE_PRINT("SNTP UP:%s\n", &p_str[0]); 
+            break;
+        }
+        
+        /* Wi-Fi connected event code*/
         case SYS_RNWF_CONNECTED:
-          SYS_CONSOLE_PRINT("Wi-Fi Connected    \r\n");
-       break;
+        {
+            SYS_CONSOLE_PRINT("Wi-Fi Connected    \r\n");
+            break;
+        }
+        
+        /* Wi-Fi disconnected event code*/
         case SYS_RNWF_DISCONNECTED:
+        {
             SYS_CONSOLE_PRINT("Wi-Fi Disconnected\nReconnecting... \r\n");
             SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_STA_CONNECT, NULL);
             break;
-        case SYS_RNWF_DHCP_DONE:
+        }
+        
+        /* Wi-Fi DHCP complete event code*/
+        case SYS_RNWF_IPv4_DHCP_DONE:
         {
             SYS_CONSOLE_PRINT("DHCP Done...%s \r\n",&p_str[2]); 
-            SYS_RNWF_NET_SOCK_SrvCtrl(SYS_RNWF_NET_SOCK_TCP_OPEN, &tcp_client_socket);            
+            if(SYS_RNWF_NET_SOCK_TYPE_IPv4_0 != 0)
+             {    
+                SYS_RNWF_NET_SockSrvCtrl(SYS_RNWF_NET_SOCK_TCP_OPEN, &g_tcpServerSocket);
+                SYS_CONSOLE_PRINT("Starting the server with IPv4 address, try connecting client\r\n"); 
+             }
+            break;
         }
+        
+        /* Wi-Fi IPv6 DHCP complete event code*/
+        case SYS_RNWF_IPv6_DHCP_DONE:
+        {
+            SYS_CONSOLE_PRINT("IPv6 DHCP Done...%s \r\n",&p_str[2]); 
+            if(SYS_RNWF_NET_SOCK_TYPE_IPv6_LOCAL0 != 0) 
+            {   
+                 /*Local IPv6 address code*/           
+            }
+            else if(SYS_RNWF_NET_SOCK_TYPE_IPv6_GLOBAL0 != 0)
+            {
+                 /*Global IPv6 address code*/
+            }
+            break;
+        }
+        
+        /* Wi-Fi scan indication event code*/
         case SYS_RNWF_SCAN_INDICATION:
+        {
             break;
+        }
+         
+        /* Wi-Fi scan complete event code*/
         case SYS_RNWF_SCAN_DONE:
+        {
             break;
+        }
         default:
             break;
                     
     }    
 }
 
-void APP_SOCKET_Callback(uint32_t socket, SYS_RNWF_NET_SOCK_EVENT_t event, uint8_t *p_str)
+/* Application NET socket Callback Handler function */
+void SYS_RNWF_NET_SockCallbackHandler(uint32_t socket, SYS_RNWF_NET_SOCK_EVENT_t event, uint8_t *p_str)
 {
     switch(event)
     {
-        case SYS_RNWF_NET_SOCK_EVENT_CONNECTED:            
-            SYS_CONSOLE_PRINT("Client connected!\r\n" );
+        /* Net socket connected event code*/
+        case SYS_RNWF_NET_SOCK_EVENT_CONNECTED: 
+        {
+            SYS_CONSOLE_PRINT("Client Connected!\r\n" );
+            SYS_RNWF_NET_TcpSockWrite(socket, sizeof(g_tcpClientMsg), g_tcpClientMsg);
             break;
-            
+        }
+        
+        /* Net socket disconnected event code*/
         case SYS_RNWF_NET_SOCK_EVENT_DISCONNECTED:
+        {
             SYS_CONSOLE_PRINT("Client DisConnected!\r\n");
-            SYS_RNWF_NET_SOCK_SrvCtrl(SYS_RNWF_NET_SOCK_CLOSE, &socket);
             break;
-            
+        }
+        
+        /* Net socket error event code*/
         case SYS_RNWF_NET_SOCK_EVENT_ERROR:
-             SYS_CONSOLE_PRINT("ERROR : %s\r\n",p_str);
+        {
+            SYS_CONSOLE_PRINT("ERROR : %s\r\n",p_str);
             break;
-            
+        }
+        
+        /* Net socket read event code*/
         case SYS_RNWF_NET_SOCK_EVENT_READ:
         {         
-            uint8_t rx_data[64];
+            uint8_t rx_data[1024];
             int32_t rcvd_len;
             uint16_t rx_len = *(uint16_t *)p_str;
-            memset(rx_data,0,64);
+            memset(rx_data,0,1024);
            
-            if((rx_len < 64) && (rcvd_len = SYS_RNWF_NET_TCP_SOCK_Read(socket, rx_len, rx_data)) > 0)
+            if((rx_len < 1024) && (rcvd_len = SYS_RNWF_NET_TcpSockRead(socket, rx_len, rx_data)) > 0)
             {
                 rx_data[rx_len] = '\n';
-                SYS_CONSOLE_PRINT("Rx->%s\r\n", rx_data);
-                SYS_RNWF_NET_TCP_SOCK_Write(socket, rx_len, rx_data); 
+                SYS_CONSOLE_PRINT("FROM socket : %d : ",socket);
+                for(int i=0;rx_data[i];i++)
+                SYS_CONSOLE_PRINT("%c", rx_data[i]);
+                SYS_CONSOLE_PRINT("\r\n");
+                SYS_RNWF_NET_TcpSockWrite(socket, rx_len, rx_data); 
             }            
             break; 
         }
@@ -164,50 +272,61 @@ void APP_SOCKET_Callback(uint32_t socket, SYS_RNWF_NET_SOCK_EVENT_t event, uint8
     
 }
 
+/*App initializing function*/
 void APP_Initialize ( void )
 {
-    /* Place the App state machine in its initial state. */
-    appData.state = APP_STATE_INITIALIZE;
+    /* Place the Application state machine in its initial state. */
+    g_appData.state = APP_STATE_INITIALIZE;
 }
 
+/* Maintain the application's state machine.*/
 void APP_Tasks ( void )
 {
-    switch(appData.state)
+    
+    switch(g_appData.state)
     {
+        /* Application's state machine's initial state. */
         case APP_STATE_INITIALIZE:
         {
-            DMAC_ChannelCallbackRegister(DMAC_CHANNEL_0, usartDmaChannelHandler, 0);
+            DMAC_ChannelCallbackRegister(DMAC_CHANNEL_0, APP_RNWF_usartDmaChannelHandler, 0);
             SYS_RNWF_IF_Init();
             
-            appData.state = APP_STATE_REGISTER_CALLBACK;
+            g_appData.state = APP_STATE_REGISTER_CALLBACK;
             SYS_CONSOLE_PRINT("Start Of Application\r\n");
             break;
         }
+        
+        /* Register the necessary callbacks */
         case APP_STATE_REGISTER_CALLBACK:
-        {            
+        {          
               
             /* RNWF Application Callback register */
-            SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_WIFI_SET_CALLBACK, APP_WIFI_Callback);      
-            SYS_RNWF_NET_SOCK_SrvCtrl(SYS_RNWF_NET_SOCK_SET_CALLBACK, APP_SOCKET_Callback);
+            SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_WIFI_SET_CALLBACK, SYS_RNWF_WIFI_CallbackHandler);      
+            SYS_RNWF_NET_SockSrvCtrl(SYS_RNWF_NET_SOCK_SET_CALLBACK, SYS_RNWF_NET_SockCallbackHandler);
           
             /* Wi-Fii Connectivity */
-            SYS_RNWF_WIFI_PARAM_t wifi_sta_cfg = {SYS_RNWF_WIFI_MODE_STA, SYS_RNWF_WIFI_STA_SSID, SYS_RNWF_WIFI_STA_PWD, SYS_RNWF_STA_SECURITY, SYS_RNWF_WIFI_STA_AUTOCONNECT};        
+            SYS_RNWF_WIFI_PARAM_t wifi_sta_cfg = {RNWF_WIFI_DEVMODE, SYS_RNWF_WIFI_STA_SSID, SYS_RNWF_WIFI_STA_PWD, SYS_RNWF_STA_SECURITY, SYS_RNWF_WIFI_STA_AUTOCONNECT};  
+            SYS_CONSOLE_PRINT("Connecting to %s\r\n",SYS_RNWF_WIFI_STA_SSID);
             SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_SET_WIFI_PARAMS, &wifi_sta_cfg);
 
-            appData.state = APP_STATE_TASK;
+            g_appData.state = APP_STATE_TASK;
             break;
         }
+        
+        /* Run Event handler */
         case APP_STATE_TASK:
         {
-            RNWF_EVENT_Handler();
+            SYS_RNWF_IF_EventHandler();
             break;
         }
+        
         default:
         {
             break;
         }
     }
 }
+
 
 ```
 

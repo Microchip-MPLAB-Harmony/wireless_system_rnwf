@@ -12,7 +12,7 @@ MPLAB® Harmony 3 is an extension of the MPLAB® ecosystem for creating embedded
 
 - [Microchip MPLAB® Harmony Pages](https://microchip-mplab-harmony.github.io/)
 
-This repository contains the MPLAB® Harmony 3 Wireless system services for RNWF02 device. Wireless system services abstracts out the complexities of a networked system design and simplifies development using RNWF02. 
+This repository contains the MPLAB® Harmony 3 Wireless system services for RNWF02/WINCS02 device. Wireless system services abstracts out the complexities of a networked system design and simplifies development using RNWF02/WINCS02. 
 
 Refer to the following links for release notes, license and more information about each system service.
 
@@ -20,15 +20,27 @@ Refer to the following links for release notes, license and more information abo
 
 - [MPLAB® Harmony License](Microchip_SLA001.md)
 
-- [Wi-Fi System Service](system\RNWF_wifi\docs\readme.md)
+## RNWF System Services
 
-- [Provision System Service](system\RNWF_wifiprov\docs\readme.md)
+- [Wi-Fi System Service](system/Wifi/docs/readme.md)
 
-- [Net System Service](system\RNWF_net\docs\readme.md)
+- [Provision System Service](system/Wifiprov/docs/readme.md)
 
-- [OTA System Service](system\RNWF_ota\docs\readme.md)
+- [Net System Service](system/Net/docs/readme.md)
 
-- [MQTT System Service](system\RNWF_mqtt\docs\readme.md)
+- [OTA System Service](system/Ota/docs/readme.md)
+
+- [MQTT System Service](system/Mqtt/docs/readme.md)
+
+## WINCS02 System Services
+
+- [Wi-Fi System Service](system/Wifi/docs/readme_wincs02.md)
+
+- [Provision System Service](system/Wifiprov/docs/readme_wincs02.md)
+
+- [Net System Service](system/Net/docs/readme_wincs02.md)
+
+- [MQTT System Service](system/Mqtt/docs/readme_wincs02.md)
 
 ## Contents Summary
 

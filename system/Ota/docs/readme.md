@@ -8,7 +8,7 @@ SYS_RNWF_RESULT_t SYS_RNWF_OTA_SrvCtrl( SYS_RNWF_OTA_SERVICE_t request, void *in
 
 **OTA System Service Configuration in MCC**
 
-![](images\GUID-5EE6F82C-875B-4001-8938-DF15D00F2406-low.png)
+![](images/GUID-5EE6F82C-875B-4001-8938-DF15D00F2406-low.png)
 
 -   **OTA Tunnel Selection:** Tunnel to receive the OTA server and Image details. Drop-down to select OTA Tunnel. Currently supports TCP only
 -   **OTA Tunnel Port:** Configure OTA server port
@@ -41,7 +41,7 @@ The sequence chart for the OTA process is provided below:
 
 <br />
 
-![](images\GUID-554F7FCC-9DD8-4FDF-B1BB-E6F2D02FB03E-low.png "OTA Process")
+![](images/GUID-554F7FCC-9DD8-4FDF-B1BB-E6F2D02FB03E-low.png "OTA Process")
 
 <br />
 
