@@ -3,6 +3,25 @@
 
 # Microchip MPLAB® Harmony 3 Release Notes
 
+### Harmony 3 wireless system service for RNWF02 and WINCS02 v3.0.0
+
+### New Features
+ 
+- Updated RNWF02 and WINCS02 system services with MQTT v5.0 features.
+- This release includes below system services implementation for WINCS02 device with SAM 9x75 Host.
+    - **Wi-Fi SystemService**
+    - **Wi-Fi Provisioning System service**
+    - **Net System Service**
+    - **MQTT System service**
+
+* [MPLAB® X IDE v6.20](https://www.microchip.com/mplab/mplab-x-ide)
+* [MPLAB® XC32 C/C++ Compiler v4.45](https://www.microchip.com/mplab/compilers)
+* MPLAB® X IDE plug-ins:
+    * MPLAB® Code Configurator (MCC) v5.5.1  
+* SAME54 DFP : v3.8.234
+
+
+
 ### Harmony 3 wireless system service for RNWF02 and WINCS02 v2.0.0
 
 ### New Features

@@ -4,7 +4,7 @@ package:
   type: "api"
   status: "production"
   required: false
-  version: "v2.0.0"
+  version: "v3.0.0"
   
   dependencies:
     - name: "csp"
@@ -18,5 +18,5 @@ package:
       version: "v3.17.0"
     - name: "wireless_wifi"
       type: "package"
-      version: "v3.11.0"
+      version: "v3.12.0"
 

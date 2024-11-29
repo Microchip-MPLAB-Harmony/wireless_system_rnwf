@@ -4,6 +4,6 @@
         <Dependency name="csp" version="v3.18.5"/>
         <Dependency name="core" version="v3.13.4"/>
         <Dependency name="bsp" version="v3.19.0"/>
-        <Dependency name="wireless_wifi" version="v3.11.0"/>
+        <Dependency name="wireless_wifi" version="v3.12.0"/>
     </Dependencies>
 </Package>
