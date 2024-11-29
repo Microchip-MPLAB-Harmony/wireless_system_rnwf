@@ -55,7 +55,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 
 /* This section lists the other files that are included in this file.
  */
-#include "app.h"
+
 #include "configuration.h"
 #include "system/time/sys_time.h"
 #include "system/debug/sys_debug.h"
@@ -98,6 +98,7 @@ static bool g_otaDwldDone = false;
 /* Buffer to hold Downloaded data */
 static uint8_t g_otaBuffer[SYS_RNWF_OTA_BUF_LEN_MAX];
 
+static bool g_otaHttpTlsFileReqEnable = false;
 
 /* ************************************************************************** */
 /* ************************************************************************** */
@@ -250,7 +251,7 @@ static SYS_RNWF_RESULT_t SYS_RNWF_OTA_DownloadProcess
             if(result == SYS_RNWF_OTA_BUF_LEN_MAX)
             {
                 ota_chunk.chunk_size = SYS_RNWF_OTA_BUF_LEN_MAX;  
-                SYS_RNWF_OTA_DBG_MSG("Downloaded : %lu\r\n", total_rx);
+                SYS_RNWF_OTA_DBG_MSG("Downloaded : %lu - %.2f %\r\n", total_rx,(((float)total_rx/g_otaFileSize)) * 100.00f);
                 g_otaCallBackHandler(SYS_RNWF_OTA_EVENT_FILE_CHUNK, (uint8_t *)&ota_chunk);                
                 result = 0;
             }
@@ -268,9 +269,7 @@ static SYS_RNWF_RESULT_t SYS_RNWF_OTA_DownloadProcess
         }
         else
         {
-            SYS_RNWF_NET_SockSrvCtrl(SYS_RNWF_NET_SOCK_CLOSE, &socket);
-            g_otaCallBackHandler(SYS_RNWF_OTA_EVENT_DWLD_FAIL, (uint8_t *)NULL);
-            return SYS_RNWF_FAIL;
+            continue;
         }
     }
     return SYS_RNWF_PASS;
@@ -315,15 +314,16 @@ static SYS_RNWF_RESULT_t SYS_RNWF_OTA_ConfProcess
             token = (char *)strtok(NULL, ", ");
         }
         
-        /* Configure Socket parameters */
-        otaCfg.socket.tls_conf = SYS_RNWF_TLS_ENABLE1;
-        otaCfg.socket.bind_type = SYS_RNWF_NET_BIND_TYPE1;
-        otaCfg.socket.sock_type = SYS_RNWF_NET_SOCK_TYPE1;
+        /* Configure Socket parameters From Socket data Received*/
         otaCfg.socket.sock_port = atoi(args[SYS_OTA_CFG_PARAM_PORT]);
         otaCfg.socket.sock_addr = args[SYS_OTA_CFG_PARAM_SERVER];
+        otaCfg.file             = args[SYS_OTA_CFG_PARAM_FILE];
+        otaCfg.socket.tls_conf  = atoi(args[SYS_OTA_CFG_TLS_ENABLE]);
         
-        otaCfg.file = args[SYS_OTA_CFG_PARAM_FILE];
-        otaCfg.type = strtol(args[SYS_OTA_CFG_PARAM_TYPE], NULL, 10);
+        /* Configure Socket parameters */
+        otaCfg.socket.bind_type = SYS_RNWF_OTA_SERV_SOCK_BIND_TYPE;
+        otaCfg.socket.sock_type = SYS_RNWF_OTA_SERV_SOCK_TYPE;
+        otaCfg.socket.ip_type       = SYS_RNWF_OTA_SERV_SOCK_TYPE_IPv4;
         
         g_otaCallBackHandler(SYS_RNWF_OTA_EVENT_IMAGE_INFO, (uint8_t *)&otaCfg);  
         SYS_RNWF_OTA_SrvCtrl(SYS_RNWF_OTA_REQUEST, (void *)&otaCfg);
@@ -842,16 +842,31 @@ static void SYS_RNWF_OTA_SocketCallback
         
         case SYS_RNWF_NET_SOCK_EVENT_CONNECTED:
         {
-            if(!cfg_client_id && strstr((const char *)p_str, SYS_RNWF_OTA_TOSTR(SYS_RNWF_OTA_CONF_PORT)))
+            if(!cfg_client_id && strstr((const char *)p_str, SYS_RNWF_OTA_TOSTR(SYS_RNWF_OTA_CONF_SOCK_PORT)))
             {
                 cfg_client_id = sock;
                 SYS_RNWF_OTA_DBG_MSG("Connection received on configuration tunnel %d\r\n", cfg_client_id);
                 SYS_RNWF_SYSTEM_SrvCtrl(SYS_RNWF_SYSTEM_DEV_INFO, g_otaBuf);
             }
-            SYS_RNWF_NET_TcpSockWrite(sock, strlen((char *)g_otaBuf), (uint8_t *)g_otaBuf);
+            
+            // Non-TLS HTTP get request 
+            if (g_otaHttpTlsFileReqEnable == false)
+            {
+                SYS_RNWF_NET_TcpSockWrite(sock, strlen((char *)g_otaBuf), (uint8_t *)g_otaBuf);
+            }
             break;
         }
 
+        /* Net socket TLS done event code*/
+        case SYS_RNWF_NET_SOCK_EVENT_TLS_DONE:
+        {
+            SYS_RNWF_OTA_DBG_MSG("TLS Socket Connection Successful!\r\n");
+			
+	        // TLS HTTPS get request 
+            SYS_RNWF_NET_TcpSockWrite(sock, strlen((char *)g_otaBuf), g_otaBuf); 
+            break;
+        } 
+        
         case SYS_RNWF_NET_SOCK_EVENT_DISCONNECTED:
         {
             SYS_RNWF_OTA_DBG_MSG("Close OTA Socket!\r\n");
@@ -895,7 +910,7 @@ void SYS_RNWF_OTA_ProgramDfu
 {    
     static SYS_RNWF_OTA_PROGRAM_EVENT_t program_event = SYS_RNWF_PROGRAM_INIT;
     static uint32_t flash_addr = SYS_RNWF_OTA_FLASH_IMAGE_START;
-    static SYS_RNWF_OTA_CHUNK_t ota_chunk = { .chunk_addr = 0x60000000, .chunk_ptr = g_otaBuffer, .chunk_size = 0x84000};
+    static SYS_RNWF_OTA_CHUNK_t ota_chunk = { .chunk_addr = SYS_RNWF_OTA_FLASH_START_ADDRESS, .chunk_ptr = g_otaBuffer, .chunk_size = 0x84000};
     
     switch(program_event)
     {
@@ -909,7 +924,7 @@ void SYS_RNWF_OTA_ProgramDfu
         
         case SYS_RNWF_PROGRAM_DFU_ERASE:
         {
-            if(SYS_RNWF_OTA_SrvCtrl(SYS_RNWF_OTA_DFU_ERASE, (void *)&ota_chunk.chunk_addr) == SYS_RNWF_PASS)
+            if(SYS_RNWF_OTA_SrvCtrl(SYS_RNWF_OTA_DFU_ERASE, (void *)&ota_chunk) == SYS_RNWF_PASS)
             {
                 program_event = SYS_RNWF_PROGRAM_FLASH_READ;
             }
@@ -991,10 +1006,12 @@ SYS_RNWF_RESULT_t SYS_RNWF_OTA_SrvCtrl
             }
             
             g_otaBuf = (uint8_t *)input;
-            ota_cfgSock.bind_type = SYS_RNWF_NET_BIND_TYPE0;
-            ota_cfgSock.sock_port = SYS_RNWF_NET_SOCK_PORT0;
-            ota_cfgSock.sock_type = SYS_RNWF_NET_SOCK_TYPE0;
-            ota_cfgSock.tls_conf = SYS_RNWF_TLS_ENABLE0;
+            ota_cfgSock.bind_type   = SYS_RNWF_OTA_CONF_SOCK_BIND_TYPE;
+            ota_cfgSock.sock_port   = SYS_RNWF_OTA_CONF_SOCK_PORT;
+            ota_cfgSock.sock_type   = SYS_RNWF_OTA_CONF_SOCK_TYPE;
+            ota_cfgSock.tls_conf    = SYS_RNWF_OTA_CONF_SOCK_TLS_ENABLE;
+            ota_cfgSock.ip_type     = SYS_RNWF_OTA_CONF_SOCK_TYPE_IPv4;
+            ota_cfgSock.noOfClients = SYS_RNWF_NET_NO_OF_CLIENT_SOCKETS;
             
             /* RNWF Application Callback register */
             if(g_otaCallBackHandler != NULL)
@@ -1012,17 +1029,49 @@ SYS_RNWF_RESULT_t SYS_RNWF_OTA_SrvCtrl
             
             char temp_buff[100] = {'\0'};
             char str1[] = "GET /";
+            <#assign otaServerSoc = SYS_RNWF_OTA_SERVER_SOC> 
+            <#assign tlsVariableName = "sysNetRNWF.SYS_RNWF_NET_ENABLE_TLS" + otaServerSoc>
+            <#assign otaServSocTlsEnable = tlsVariableName?eval>
+
+            // TODO : Need to be changed based on GET request 
+            <#if otaServSocTlsEnable == false >
             char str2[] = " HTTP/1.1\r\n Connection: Keep-Alive\r\n\r\n";
+            <#else>
+            char str2[] = " HTTPs/1.1\r\n Connection: Keep-Alive\r\n\r\n";
+            </#if>
             memcpy(temp_buff, str1,strlen(str1));
             memcpy(&temp_buff[strlen(str1)], otaCfg->file,strlen(otaCfg->file) );
             memcpy(&temp_buff[strlen(str1) + strlen(otaCfg->file)], str2, strlen(str2) );
             
             memcpy(g_otaBuf, temp_buff, sizeof(temp_buff));
+            
             #if SYS_RNWF_OTA_DFU_DEBUG
             SYS_RNWF_OTA_DBG_MSG("HTTP request : :%s\r\n",g_otaBuf);
             #endif
             if(g_otaCallBackHandler != NULL)
             {
+                <#if otaServSocTlsEnable == true >
+                // TLS Socket Configuration
+                if (otaCfg->socket.tls_conf)
+                {
+                    char *tlsSocketCfg[] = 
+                    {
+                        
+                        SYS_RNWF_OTA_SERV_SOCK_PEER_AUTH,
+                        SYS_RNWF_OTA_SERV_SOCK_ROOT_CERT, 
+                        SYS_RNWF_OTA_SERV_SOCK_DEV_CERT, 
+                        SYS_RNWF_OTA_SERV_SOCK_DEV_KEY,                                     
+                        SYS_RNWF_OTA_SERV_SOCK_DEV_KEY_PWD,                                    
+                        SYS_RNWF_OTA_SERV_SOCK_SERVER_NAME,
+                        SYS_RNWF_OTA_SERV_SOCK_DOMAIN_NAME,
+                        SYS_RNWF_OTA_SERV_SOCK_DOMAIN_NAME_VERIFY
+                        
+                    };
+                    
+                    g_otaHttpTlsFileReqEnable = true;
+                    SYS_RNWF_NET_SockSrvCtrl(SYS_RNWF_NET_TLS_CONFIG_1, tlsSocketCfg);
+                }
+                </#if>
                 result = SYS_RNWF_NET_SockSrvCtrl(SYS_RNWF_NET_SOCK_TCP_OPEN, &otaCfg->socket);
             }
             break;

@@ -41,6 +41,7 @@ from datetime import datetime
 
 def instantiateComponent(sysWifiRNWFComponent):
     global wifi_helpkeyword
+
     syswifiEnable = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_WIFI_ENABLE", None)
     syswifiEnable.setHelp(wifi_helpkeyword)
     syswifiEnable.setVisible(False)
@@ -64,33 +65,6 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfwifistaEnable.setDescription("Enable STA mode Configuration ")
     sysrnwfwifistaEnable.setDependencies(syswifiSTAautoMenu, ["SYS_RNWF_WIFI_MODE_STA"])
     
-    sysrnwfServices = sysWifiRNWFComponent.createCommentSymbol("SYS_SYSTEM_SERVICE", None)
-    sysrnwfServices.setLabel("Advanced Configurations ")
-    sysrnwfServices.setHelp(wifi_helpkeyword)
-        
-    sysrnwfwifiHost = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_HOST", sysrnwfServices , ["None" , "SAME54X-pro"])
-    sysrnwfwifiHost.setLabel("Select Host ")
-    sysrnwfwifiHost.setHelp(wifi_helpkeyword)
-    sysrnwfwifiHost.setDescription("Select the Host Device")
-    sysrnwfwifiHost.setDefaultValue("None")
-
-    sysrnwfwifiDevice = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_DEVICE", sysrnwfServices , ["None","RNWF02","WINCS02"])
-    sysrnwfwifiDevice.setLabel("Select Wifi device ")
-    sysrnwfwifiDevice.setHelp(wifi_helpkeyword)
-    sysrnwfwifiDevice.setVisible(False)
-    sysrnwfwifiDevice.setDescription("Select the Wifi Device")
-    sysrnwfwifiDevice.setDefaultValue("None")
-    sysrnwfwifiDevice.setDependencies(sysrnwfwifiDeviceMenuVisible,["SYS_RNWF_HOST"])
-    
-    
-    sysrnwfinterfaceMode = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_INTERFACE_MODE", sysrnwfServices , ["None","UART","SPI"])
-    sysrnwfinterfaceMode.setLabel("Interface Mode")
-    sysrnwfinterfaceMode.setHelp(wifi_helpkeyword)
-    sysrnwfinterfaceMode.setVisible(False)
-    sysrnwfinterfaceMode.setDescription("Select the Device Interface Mode ")
-    sysrnwfinterfaceMode.setDefaultValue("None")
-    sysrnwfinterfaceMode.setDependencies(syscomponentautoactivate,["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
-    
 
     sysrnwfwifistaSsid = sysWifiRNWFComponent.createStringSymbol("SYS_RNWF_WIFI_STA_SSID_NAME", sysrnwfwifistaEnable)
     sysrnwfwifistaSsid.setLabel("SSID")
@@ -100,7 +74,7 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfwifistaSsid.setDefaultValue("DEMO_AP")
     sysrnwfwifistaSsid.setDependencies(syswifiMenuVisible, ["SYS_RNWF_WIFI_MODE_STA"])
 
-    sysrnwfwifistaAuth = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_STA_SECURITY", sysrnwfwifistaEnable, ["OPEN", "WPA2-MIXED" , "WPA2" , "WPA3-TRANS" , "WPA3"])
+    sysrnwfwifistaAuth = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_STA_SECURITY", sysrnwfwifistaEnable, ["OPEN","WPA2-MIXED","WPA2","WPA3-TRANS","WPA3"])
     sysrnwfwifistaAuth.setLabel("Security type")
     sysrnwfwifistaAuth.setHelp(wifi_helpkeyword)
     sysrnwfwifistaAuth.setDescription("Enter STA Mode Security type")
@@ -212,11 +186,65 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfwifiProvChannel.setDefaultValue(1)
     sysrnwfwifiProvChannel.setDependencies(syswifiMenuVisible, ["SYS_RNWF_WIFI_MODE_PROV"])
 
-        
-    ##### Advanced Configuration ########
-    
+    ###############################################################################################################################
+    ###################################################### Advanced Configurations ################################################
+    ###############################################################################################################################
+     
+    ####################################### Host & device Configurations ##########################################################
+     
+    sysrnwfAdvConf = sysWifiRNWFComponent.createCommentSymbol("SYS_SYSTEM_SERVICE", None)
+    sysrnwfAdvConf.setLabel("Advanced Configurations ")
+    sysrnwfAdvConf.setHelp(wifi_helpkeyword)
 
-    sysrnwfcountrycode = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_COUNTRYCODE", sysrnwfServices , ["GEN" , "USA", "EMEA"])
+    sysrnwfHostDevConf = sysWifiRNWFComponent.createCommentSymbol("SYS_SYSTEM_HOST_DEV_SERVICE", sysrnwfAdvConf)
+    sysrnwfHostDevConf.setLabel("Host & Device Configurations ")
+    sysrnwfHostDevConf.setHelp(wifi_helpkeyword)
+        
+    sysrnwfwifiHost = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_HOST", sysrnwfHostDevConf , ["None" , "SAME54X-pro", "SAM9X75"])
+    sysrnwfwifiHost.setLabel("Host ")
+    sysrnwfwifiHost.setHelp(wifi_helpkeyword)
+    sysrnwfwifiHost.setDescription("Select the Host Device")
+    sysrnwfwifiHost.setDefaultValue("None")
+
+    sysrnwfwifiDevice = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_DEVICE", sysrnwfHostDevConf , ["None","RNWF02","WINCS02"])
+    sysrnwfwifiDevice.setLabel("Wi-Fi device ")
+    sysrnwfwifiDevice.setHelp(wifi_helpkeyword)
+    sysrnwfwifiDevice.setVisible(True)
+    sysrnwfwifiDevice.setDescription("Select the Wifi Device")
+    sysrnwfwifiDevice.setDefaultValue("None")
+    sysrnwfwifiDevice.setDependencies(sysrnwfwifiDeviceMenuVisible,["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE"])
+
+    sysrnwfwifiSam9x75Dev = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_SAM_9x75_WIFI_DEVICE", sysrnwfHostDevConf , ["None","WINCS02"])
+    sysrnwfwifiSam9x75Dev.setLabel("Wi-Fi device ")
+    sysrnwfwifiSam9x75Dev.setHelp(wifi_helpkeyword)
+    sysrnwfwifiSam9x75Dev.setVisible(False)
+    sysrnwfwifiSam9x75Dev.setDescription("Select the Wi-Fi Device")
+    sysrnwfwifiSam9x75Dev.setDefaultValue("None")
+    sysrnwfwifiSam9x75Dev.setDependencies(sysrnwfwifiSAM9x75DeviceMenuVisible,["SYS_RNWF_HOST","SYS_RNWF_SAM_9x75_WIFI_DEVICE"])
+    
+    
+    sysrnwfinterfaceMode = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_INTERFACE_MODE", sysrnwfHostDevConf , ["None","UART","SPI"])
+    sysrnwfinterfaceMode.setLabel("Interface Mode")
+    sysrnwfinterfaceMode.setHelp(wifi_helpkeyword)
+    sysrnwfinterfaceMode.setVisible(False)
+    sysrnwfinterfaceMode.setDescription("Select the Device Interface Mode ")
+    sysrnwfinterfaceMode.setDefaultValue("None")
+    sysrnwfinterfaceMode.setDependencies(syscomponentautoactivate,["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_SAM_9x75_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+
+    sysrnwfwifiComment = sysWifiRNWFComponent.createCommentSymbol('SYS_RNWF_COMMENT', sysrnwfHostDevConf)
+    sysrnwfwifiComment.setLabel("Warning!!! Host, Device and Interface are NOT SUPPORTED !!!")
+    sysrnwfwifiComment.setVisible(False)
+    sysrnwfwifiComment.setDependencies(sysrnwfwifiHostDevConf, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_SAM_9x75_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+
+    ######################################################### Wifi Configurations Menu ###########################################################
+
+    sysrnwfWifiConf = sysWifiRNWFComponent.createCommentSymbol("SYS_WIFI_ADV_WIFI_MENU", sysrnwfAdvConf)
+    sysrnwfWifiConf.setLabel("Wi-Fi Configurations ")
+    sysrnwfWifiConf.setHelp(wifi_helpkeyword)
+    sysrnwfWifiConf.setVisible(False)
+    sysrnwfWifiConf.setDependencies(syswifiAdvancedWifiMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+
+    sysrnwfcountrycode = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_COUNTRYCODE", sysrnwfWifiConf , ["GEN" , "USA", "EMEA","IEEE","CUST1","CUST2"])
     sysrnwfcountrycode.setLabel("Country Code")
     sysrnwfcountrycode.setHelp(wifi_helpkeyword)
     sysrnwfcountrycode.setDescription("Enable Country code \n Support channels per Country code: \n GEN - 1 to 13, \n USA - 1 to 11,")
@@ -224,15 +252,23 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfcountrycode.setVisible(False)
     sysrnwfcountrycode.setDependencies(syswifiAdvancedConfMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
 
-    sysrnwfwifidebuglogs = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_WIFI_DEBUG_LOGS", sysrnwfServices)
-    sysrnwfwifidebuglogs.setLabel("Wi-Fi Debug logs")
-    sysrnwfwifidebuglogs.setHelp(wifi_helpkeyword)
-    sysrnwfwifidebuglogs.setDefaultValue(False)
-    sysrnwfwifidebuglogs.setDescription("Select to enable Wi-Fi service debug logs ")
-    sysrnwfwifidebuglogs.setVisible(False)
-    sysrnwfwifidebuglogs.setDependencies(syswifiAdvancedConfMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+    syswincsfilesprint = sysWifiRNWFComponent.createBooleanSymbol("SYS_WINCS_CERT_PRINT", sysrnwfWifiConf)
+    syswincsfilesprint.setLabel("Certificates & Keys Print ")
+    syswincsfilesprint.setHelp(wifi_helpkeyword)
+    syswincsfilesprint.setDescription("Enable Certificats and Keys printing in System Service")
+    syswincsfilesprint.setDefaultValue(False)
+    syswincsfilesprint.setVisible(False)
+    syswincsfilesprint.setDependencies(syswifiAdvancedConfMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
 
-    sysrnwfwifibtcoexist = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_WIFI_BT_COEXIST", sysrnwfServices)
+    sysrnwfpowersavemode = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_POWER_SAVE_MODE", sysrnwfWifiConf)
+    sysrnwfpowersavemode.setLabel("Power Save Mode")
+    sysrnwfpowersavemode.setHelp(wifi_helpkeyword)
+    sysrnwfpowersavemode.setVisible(False)
+    sysrnwfpowersavemode.setDefaultValue(False)
+    sysrnwfpowersavemode.setDescription("Select to enable Wi-Fi power save in STA mode ")
+    sysrnwfpowersavemode.setDependencies(syswifiAdvancedConfMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+
+    sysrnwfwifibtcoexist = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_WIFI_BT_COEXIST", sysrnwfWifiConf)
     sysrnwfwifibtcoexist.setLabel("Wi-Fi BT Coexistance")
     sysrnwfwifibtcoexist.setHelp(wifi_helpkeyword)
     sysrnwfwifibtcoexist.setDefaultValue(False)
@@ -273,29 +309,7 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfantennatype.setDefaultValue("Dedicated Antenna")
     sysrnwfantennatype.setDependencies(syswifiMenuVisible, ["SYS_RNWF_WIFI_BT_COEXIST"])
 
-    sysrnwfpowersavemode = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_POWER_SAVE_MODE", sysrnwfServices)
-    sysrnwfpowersavemode.setLabel("Power Save Mode")
-    sysrnwfpowersavemode.setHelp(wifi_helpkeyword)
-    sysrnwfpowersavemode.setVisible(False)
-    sysrnwfpowersavemode.setDefaultValue(False)
-    sysrnwfpowersavemode.setDescription("Select to enable Wi-Fi power save in STA mode ")
-    sysrnwfpowersavemode.setDependencies(syswifiAdvancedConfMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
-
-    sysrnwfSNTPserver = sysWifiRNWFComponent.createStringSymbol("SYS_RNWF_SNTP_ADDRESS", sysrnwfServices)
-    sysrnwfSNTPserver.setLabel("SNTP Server address")
-    sysrnwfSNTPserver.setHelp(wifi_helpkeyword)
-    sysrnwfSNTPserver.setDefaultValue("")
-    sysrnwfSNTPserver.setDescription("Enter the sntp serover address ")
-    sysrnwfSNTPserver.setVisible(False)
-    sysrnwfSNTPserver.setDependencies(syswifiAdvancedConfMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
-
-    sysrnwfdns = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_ENABLE_DNS", sysrnwfServices)
-    sysrnwfdns.setLabel("Enable DNS ")
-    sysrnwfdns.setHelp(wifi_helpkeyword)
-    sysrnwfdns.setDefaultValue(False)
-    sysrnwfdns.setDescription("Select to enable DNS finctionality")
-
-    sysrnwfping = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_PING", sysrnwfServices)
+    sysrnwfping = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_PING", sysrnwfWifiConf)
     sysrnwfping.setLabel("Ping")
     sysrnwfping.setHelp(wifi_helpkeyword)
     sysrnwfping.setDefaultValue(False)
@@ -303,8 +317,23 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfping.setVisible(False)
     sysrnwfping.setDependencies(syswifiAdvancedConfMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
 
+    sysrnwfdns = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_ENABLE_DNS", sysrnwfWifiConf)
+    sysrnwfdns.setLabel("Resolve DNS ")
+    sysrnwfdns.setHelp(wifi_helpkeyword)
+    sysrnwfdns.setDefaultValue(False)
+    sysrnwfdns.setVisible(False)
+    sysrnwfdns.setDescription("Enable DNS functionality")
+    sysrnwfdns.setDependencies(syswifiAdvancedConfMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
 
-    sysrnwfpingaddress = sysWifiRNWFComponent.createStringSymbol("SYS_RNWF_PING_ADDRESS", sysrnwfping)
+    sysrnwfSNTPserver = sysWifiRNWFComponent.createStringSymbol("SYS_RNWF_SNTP_ADDRESS", sysrnwfWifiConf)
+    sysrnwfSNTPserver.setLabel("SNTP Server address")
+    sysrnwfSNTPserver.setHelp(wifi_helpkeyword)
+    sysrnwfSNTPserver.setDefaultValue("")
+    sysrnwfSNTPserver.setDescription("Enter the sntp server address ")
+    sysrnwfSNTPserver.setVisible(False)
+    sysrnwfSNTPserver.setDependencies(syswifiAdvancedConfMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+
+    sysrnwfpingaddress = sysWifiRNWFComponent.createStringSymbol("SYS_RNWF_PING_ADDRESS", sysrnwfWifiConf)
     sysrnwfpingaddress.setLabel("Ping Address")
     sysrnwfpingaddress.setHelp(wifi_helpkeyword)
     sysrnwfpingaddress.setVisible(False)
@@ -312,45 +341,23 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfpingaddress.setDescription("Enter the Ping IP address")
     sysrnwfpingaddress.setDependencies(syswifiMenuVisible, ["SYS_RNWF_PING"])
 
-    sysrnwfinfdebuglogs = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_INF_DEBUG_LOGS", sysrnwfServices)
+    sysrnwfinfdebuglogs = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_INF_DEBUG_LOGS", sysrnwfWifiConf)
     sysrnwfinfdebuglogs.setLabel("Interface Debug logs")
     sysrnwfinfdebuglogs.setHelp(wifi_helpkeyword)
     sysrnwfinfdebuglogs.setDefaultValue(False)
     sysrnwfinfdebuglogs.setDescription("Select to enable Interface debug logs ")
     sysrnwfinfdebuglogs.setVisible(False)
-    sysrnwfinfdebuglogs.setDependencies(syswifiAdvancedConfMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+    sysrnwfinfdebuglogs.setDependencies(sysrnwfwifiInfdebugEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
 
-    sysrnwfwifiSerprovEnable = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_WIFI_SER_PROV_ENABLE", None)
-    sysrnwfwifiSerprovEnable.setLabel("RNWF WiFi Provisioning Service")
-    sysrnwfwifiSerprovEnable.setHelp(wifi_helpkeyword)
-    sysrnwfwifiSerprovEnable.setDefaultValue(False)
-    sysrnwfwifiSerprovEnable.setDescription("Enable WiFi Provisioning System Service ")
-    sysrnwfwifiSerprovEnable.setDependencies(syswifiprovautoInclude, ["SYS_RNWF_WIFI_SER_PROV_ENABLE"])
-    
+    sysrnwfwifidebuglogs = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_WIFI_DEBUG_LOGS", sysrnwfWifiConf)
+    sysrnwfwifidebuglogs.setLabel("Wi-Fi Debug logs")
+    sysrnwfwifidebuglogs.setHelp(wifi_helpkeyword)
+    sysrnwfwifidebuglogs.setDefaultValue(False)
+    sysrnwfwifidebuglogs.setDescription("Select to enable Wi-Fi service debug logs ")
+    sysrnwfwifidebuglogs.setVisible(False)
+    sysrnwfwifidebuglogs.setDependencies(syswifiAdvancedConfMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
 
-    sysrnwfmqttEnable = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_MQTT_ENABLE", None)
-    sysrnwfmqttEnable.setLabel("RNWF MQTT Service")
-    sysrnwfmqttEnable.setHelp(wifi_helpkeyword)
-    sysrnwfmqttEnable.setDefaultValue(False)
-    sysrnwfmqttEnable.setDescription("Enable mqtt System Service ")
-    sysrnwfmqttEnable.setDependencies(sysmqttautoInclude, ["SYS_RNWF_MQTT_ENABLE"])
-
-    sysrnwfotaSerEnable = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_OTA_SER_ENABLE", None)
-    sysrnwfotaSerEnable.setLabel("RNWF OTA Service")
-    sysrnwfotaSerEnable.setHelp(wifi_helpkeyword)
-    sysrnwfotaSerEnable.setDefaultValue(False)
-    sysrnwfotaSerEnable.setDescription("Enable ota System Service ")
-    sysrnwfotaSerEnable.setDependencies(sysotaautoInclude, ["SYS_RNWF_OTA_SER_ENABLE"])
-
-    sysrnwfnetSerEnable = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_NET_SER_ENABLE", None)
-    sysrnwfnetSerEnable.setLabel("RNWF NET Service")
-    sysrnwfnetSerEnable.setHelp(wifi_helpkeyword)
-    sysrnwfnetSerEnable.setDefaultValue(False)
-    sysrnwfnetSerEnable.setDescription("Enable net System Service ")
-    sysrnwfnetSerEnable.setDependencies(sysnetautoInclude, ["SYS_RNWF_NET_SER_ENABLE"])
-
-
-    sysrnwfwifiCallbackHandler = sysWifiRNWFComponent.createStringSymbol("SYS_RNWF_WIFI_CALLBACK_HANDLER", sysrnwfServices)
+    sysrnwfwifiCallbackHandler = sysWifiRNWFComponent.createStringSymbol("SYS_RNWF_WIFI_CALLBACK_HANDLER", sysrnwfWifiConf)
     sysrnwfwifiCallbackHandler.setLabel("WiFi callback handler")
     sysrnwfwifiCallbackHandler.setHelp(wifi_helpkeyword)
     sysrnwfwifiCallbackHandler.setDescription("WiFi callback handler")
@@ -358,12 +365,45 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfwifiCallbackHandler.setVisible(False)
     sysrnwfwifiCallbackHandler.setDependencies(syswifiAdvancedConfMenuVisible, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
 
+    ############################################## Services Menu ##################################################################
+
+    sysrnwfWifiServConf = sysWifiRNWFComponent.createCommentSymbol("SYS_WIFI_ADV_SERV_MENU", sysrnwfAdvConf)
+    sysrnwfWifiServConf.setLabel("System Services ")
+    sysrnwfWifiServConf.setHelp(wifi_helpkeyword)
+
+    sysrnwfnetSerEnable = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_NET_SER_ENABLE", sysrnwfWifiServConf)
+    sysrnwfnetSerEnable.setLabel("RNWF WINCS NET Service")
+    sysrnwfnetSerEnable.setHelp(wifi_helpkeyword)
+    sysrnwfnetSerEnable.setDefaultValue(False)
+    sysrnwfnetSerEnable.setDescription("Enable net System Service ")
+    sysrnwfnetSerEnable.setDependencies(sysnetautoInclude, ["SYS_RNWF_NET_SER_ENABLE"])
+
+    sysrnwfmqttEnable = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_MQTT_ENABLE", sysrnwfWifiServConf)
+    sysrnwfmqttEnable.setLabel("RNWF WINCS MQTT Service")
+    sysrnwfmqttEnable.setHelp(wifi_helpkeyword)
+    sysrnwfmqttEnable.setDefaultValue(False)
+    sysrnwfmqttEnable.setDescription("Enable mqtt System Service ")
+    sysrnwfmqttEnable.setDependencies(sysmqttautoInclude, ["SYS_RNWF_MQTT_ENABLE"])
+
+    sysrnwfotaSerEnable = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_OTA_SER_ENABLE", sysrnwfWifiServConf)
+    sysrnwfotaSerEnable.setLabel("RNWF WINCS OTA Service")
+    sysrnwfotaSerEnable.setHelp(wifi_helpkeyword)
+    sysrnwfotaSerEnable.setDefaultValue(False)
+    sysrnwfotaSerEnable.setDescription("Enable ota System Service ")
+    sysrnwfotaSerEnable.setDependencies(sysotaautoInclude, ["SYS_RNWF_OTA_SER_ENABLE"])
+
+    sysrnwfwifiSerprovEnable = sysWifiRNWFComponent.createBooleanSymbol("SYS_RNWF_WIFI_SER_PROV_ENABLE", sysrnwfWifiServConf)
+    sysrnwfwifiSerprovEnable.setLabel("RNWF WINCS WiFi Provisioning Service")
+    sysrnwfwifiSerprovEnable.setHelp(wifi_helpkeyword)
+    sysrnwfwifiSerprovEnable.setDefaultValue(False)
+    sysrnwfwifiSerprovEnable.setDescription("Enable WiFi Provisioning System Service ")
+    sysrnwfwifiSerprovEnable.setDependencies(syswifiprovautoInclude, ["SYS_RNWF_WIFI_SER_PROV_ENABLE"])
+
+
     
-
-
-    ############################################################################
-    #### Code Generation ####
-    ############################################################################
+    ###############################################################################################################################
+    ############################################## Code Generation ################################################################
+    ###############################################################################################################################
     configName = Variables.get("__CONFIGURATION_NAME")
 
     sysrnwfwifiSourceFile = sysWifiRNWFComponent.createFileSymbol("SYS_RNWF_WIFI_SOURCE", None)
@@ -416,6 +456,7 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfInterfaceSysSourceFile.setDestPath("system/")
     sysrnwfInterfaceSysSourceFile.setProjectPath("config/" + configName + "/system/")
     sysrnwfInterfaceSysSourceFile.setType("SOURCE")
+    sysrnwfInterfaceSysSourceFile.setMarkup(True)
     sysrnwfInterfaceSysSourceFile.setOverwrite(True)
     sysrnwfInterfaceSysSourceFile.setEnabled(False)
     sysrnwfInterfaceSysSourceFile.setDependencies(sysrnwfwifiRnwf02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
@@ -427,11 +468,12 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfInterfaceSysHeaderFile.setDestPath("system/")
     sysrnwfInterfaceSysHeaderFile.setProjectPath("config/" + configName + "/system/")
     sysrnwfInterfaceSysHeaderFile.setType("HEADER")
+    sysrnwfInterfaceSysHeaderFile.setMarkup(True)
     sysrnwfInterfaceSysHeaderFile.setOverwrite(True)
     sysrnwfInterfaceSysHeaderFile.setEnabled(False)
     sysrnwfInterfaceSysHeaderFile.setDependencies(sysrnwfwifiRnwf02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
 
-    #### System Files #####
+    ## System Configuration Files 
 
     sysrnwfwifiSystemConfFile = sysWifiRNWFComponent.createFileSymbol("SYS_RNWF_WIFI_CONFIGURATION_H", None)
     sysrnwfwifiSystemConfFile.setType("STRING")
@@ -443,7 +485,7 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfwifiSystemConfFile.setDependencies(sysrnwfwifiRnwf02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
 
 
-    # #### WINCS02 Code Generation
+    ########################################## WINCS02 Code Generation ###############################################################
 
     sysrnwfwifiWincs02SourceFile = sysWifiRNWFComponent.createFileSymbol("SYS_RNWF_WIFI_WINCS02_SOURCE", None)
     sysrnwfwifiWincs02SourceFile.setSourcePath("system/Wifi/templates/src/sys_wincs02_wifi_service.c.ftl")
@@ -454,7 +496,7 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfwifiWincs02SourceFile.setMarkup(True)
     sysrnwfwifiWincs02SourceFile.setEnabled(False)
     sysrnwfwifiWincs02SourceFile.setOverwrite(True)
-    sysrnwfwifiWincs02SourceFile.setDependencies(sysrnwfwifiWincs02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+    sysrnwfwifiWincs02SourceFile.setDependencies(sysrnwfwifiWincs02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_SAM_9x75_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
 
     sysrnwfwifiWincs02HeaderFile = sysWifiRNWFComponent.createFileSymbol("SYS_RNWF_WIFI_WINCS02_HEADER", None)
     sysrnwfwifiWincs02HeaderFile.setSourcePath("system/Wifi/templates/sys_wincs02_wifi_service.h.ftl")
@@ -465,7 +507,7 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfwifiWincs02HeaderFile.setMarkup(True)
     sysrnwfwifiWincs02HeaderFile.setOverwrite(True)
     sysrnwfwifiWincs02HeaderFile.setEnabled(False)
-    sysrnwfwifiWincs02HeaderFile.setDependencies(sysrnwfwifiWincs02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+    sysrnwfwifiWincs02HeaderFile.setDependencies(sysrnwfwifiWincs02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_SAM_9x75_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
     
 
     sysrnwfWincs02SysSourceFile = sysWifiRNWFComponent.createFileSymbol("SYS_RNWF_INF_WINCS02_SYSTEM_SOURCE", None)
@@ -474,9 +516,10 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfWincs02SysSourceFile.setDestPath("system/")
     sysrnwfWincs02SysSourceFile.setProjectPath("config/" + configName + "/system/")
     sysrnwfWincs02SysSourceFile.setType("SOURCE")
+    sysrnwfWincs02SysSourceFile.setMarkup(True)
     sysrnwfWincs02SysSourceFile.setOverwrite(True)
     sysrnwfWincs02SysSourceFile.setEnabled(False)
-    sysrnwfWincs02SysSourceFile.setDependencies(sysrnwfwifiWincs02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+    sysrnwfWincs02SysSourceFile.setDependencies(sysrnwfwifiWincs02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_SAM_9x75_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
 
 
     sysrnwfWincs02SysHeaderFile = sysWifiRNWFComponent.createFileSymbol("SYS_RNWF_INF_WINCS02_SYSTEM_HEADER", None)
@@ -485,11 +528,12 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfWincs02SysHeaderFile.setDestPath("system/")
     sysrnwfWincs02SysHeaderFile.setProjectPath("config/" + configName + "/system/")
     sysrnwfWincs02SysHeaderFile.setType("HEADER")
+    sysrnwfWincs02SysHeaderFile.setMarkup(True)
     sysrnwfWincs02SysHeaderFile.setOverwrite(True)
     sysrnwfWincs02SysHeaderFile.setEnabled(False)
-    sysrnwfWincs02SysHeaderFile.setDependencies(sysrnwfwifiWincs02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+    sysrnwfWincs02SysHeaderFile.setDependencies(sysrnwfwifiWincs02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_SAM_9x75_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
 
-    #### System Files #####
+    ##System Configuration Files 
     syswincs02wifiSystemConfFile = sysWifiRNWFComponent.createFileSymbol("SYS_WINCS_WIFI_CONFIGURATION_H", None)
     syswincs02wifiSystemConfFile.setType("STRING")
     syswincs02wifiSystemConfFile.setOutputName("core.LIST_SYSTEM_CONFIG_H_MIDDLEWARE_CONFIGURATION")
@@ -497,8 +541,10 @@ def instantiateComponent(sysWifiRNWFComponent):
     syswincs02wifiSystemConfFile.setMarkup(True)
     syswincs02wifiSystemConfFile.setOverwrite(True)
     syswincs02wifiSystemConfFile.setEnabled(False)
-    syswincs02wifiSystemConfFile.setDependencies(sysrnwfwifiWincs02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
-	### RNWF11 Code Generation #################
+    syswincs02wifiSystemConfFile.setDependencies(sysrnwfwifiWincs02FilesEnable, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_SAM_9x75_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+	
+    
+    ######################################################## RNWF11 Code Generation ################################################################
 
     sysrnwf11wifiSourceFile = sysWifiRNWFComponent.createFileSymbol("SYS_RNWF11_WIFI_SOURCE", None)
     sysrnwf11wifiSourceFile.setSourcePath("system/Wifi/templates/src/sys_rnwf11_wifi_service.c.ftl")
@@ -574,13 +620,79 @@ def syswifiprovGenSourceFile(sourceFile, event):
     sourceFile.setEnabled(event["value"])
 
 
-def sysrnwfwifiDeviceMenuVisible(symbol, event):
-    if (event["value"] == "SAME54X-pro"):
-        print("Device WIFI Menu Visible.")
+def sysrnwfwifiHostDevConf(symbol, event):
+    component = symbol.getComponent()
+    host = component.getSymbolValue("SYS_RNWF_HOST")
+    device = component.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
+    sam9x75Device = component.getSymbolValue("SYS_RNWF_SAM_9x75_WIFI_DEVICE")
+    interface = component.getSymbolValue("SYS_RNWF_INTERFACE_MODE")
+
+    if(host == "SAM9X75" and sam9x75Device == "WINCS02" and interface == "UART"):
+        symbol.setVisible(True)
+    elif(host == "SAME54X-pro" and device == "WINCS02" and interface == "UART"):
         symbol.setVisible(True)
     else:
-        print("WIFI Menu Invisible.")
         symbol.setVisible(False)
+
+
+
+def sysrnwfwifiInfdebugEnable(symbol, event):
+    print("Device WIFI Menu Visible.")
+    component = symbol.getComponent()
+    device = component.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
+    sam9x75Device = component.getSymbolValue("SYS_RNWF_SAM_9x75_WIFI_DEVICE")
+
+    if (device == "WINCS02" or sam9x75Device == "WINCS02"):
+        symbol.setVisible(False)
+    else:
+        symbol.setVisible(True)
+
+def syswifiAdvancedWifiMenuVisible(symbol, event):
+    component = symbol.getComponent()
+    device = component.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
+    sam9x75Device = component.getSymbolValue("SYS_RNWF_SAM_9x75_WIFI_DEVICE")
+
+    if (device != "None" or sam9x75Device != "None"):
+        symbol.setVisible(True)
+    else:
+        symbol.setVisible(False)
+
+
+def sysrnwfwifiDeviceMenuVisible(symbol, event):
+    component = symbol.getComponent()
+    host = component.getSymbolValue("SYS_RNWF_HOST")
+    device = component.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
+    if (host == "SAME54X-pro" or host == "None"):
+        symbol.setVisible(True)
+    else:
+        symbol.setVisible(False)
+    
+    component = symbol.getComponent()
+    device = component.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
+    
+    if(device == "WINCS02"):
+        if(Database.getComponentByID("drvWifiWincS02") == None):    
+            res = Database.activateComponents(["drvWifiWincS02"])
+        component.setSymbolValue("SYS_RNWF_INTERFACE_MODE","SPI")
+    elif(device == "RNWF02"):
+        component.setSymbolValue("SYS_RNWF_INTERFACE_MODE","UART")
+
+
+def sysrnwfwifiSAM9x75DeviceMenuVisible(symbol, event):
+    component = symbol.getComponent()
+    host = component.getSymbolValue("SYS_RNWF_HOST")
+    sam9x75Device = component.getSymbolValue("SYS_RNWF_SAM_9x75_WIFI_DEVICE")
+
+    if (host == "SAM9X75"):
+        symbol.setVisible(True)
+    else:
+        symbol.setVisible(False)
+
+    if(sam9x75Device == "WINCS02"):
+        if(Database.getComponentByID("drvWifiWincS02") == None):    
+            res = Database.activateComponents(["drvWifiWincS02"])
+        component.setSymbolValue("SYS_RNWF_INTERFACE_MODE","SPI")
+
 
 def setVal(component, symbol, value):
     triggerSvDict = {"Component":component,"Id":symbol, "Value":value}
@@ -624,20 +736,6 @@ def syswifiMenuVisible(symbol, event):
         print("WIFI Menu Invisible.")
         symbol.setVisible(False)
 
-def syswifiSTASecurityMenu(symbol, event):
-    print("syswifiSTASecurityMenu")
-
-def syswifiAPSecurityMenu(symbol, event):
-    print("syswifiAPSecurityMenu")
-
-def syswifiChannelErr(symbol, event):
-    print("syswifiChannelErr")
-
-def syswifiSTAMenu(symbol, event):
-    print("syswifiSTAMenu")
-
-def syswifiAPMenu(symbol, event):
-    print("syswifiAPMenu")
 
 def sysrnwfwifiRnwf02FilesEnable(symbol, event):
     print("sysrnwfwifirnwf02FilesEnable")
@@ -646,25 +744,22 @@ def sysrnwfwifiRnwf02FilesEnable(symbol, event):
     device = data.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
     interface = data.getSymbolValue("SYS_RNWF_INTERFACE_MODE")
 
-    if ((host == "SAME54X-pro") and (device == "RNWF02") and (interface== "UART")):
-        print("File : Host and Device are SUPPORTED - RN")
+    if device == "RNWF02" and interface == "UART":
         symbol.setEnabled(True)
     else:
-        print("File : Host and Device are NOT SUPPORTED")
-
+        symbol.setEnabled(False)
 
 def sysrnwfwifiWincs02FilesEnable(symbol, event):
     print("sysrnwfwifiWincs02FilesEnable")
     data = symbol.getComponent()
-    host = data.getSymbolValue("SYS_RNWF_HOST")
+    sam9x75Device = data.getSymbolValue("SYS_RNWF_SAM_9x75_WIFI_DEVICE")
     device = data.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
     interface = data.getSymbolValue("SYS_RNWF_INTERFACE_MODE")
 
-    if ((host == "SAME54X-pro") and (device == "WINCS02") and (interface == "SPI")):
-        print("File : Host and Device are SUPPORTED - NC")
+    if (device == "WINCS02" or sam9x75Device == "WINCS02") and interface == "SPI":
         symbol.setEnabled(True)
     else:
-        print("File : Host and Device are NOT SUPPORTED")
+        symbol.setEnabled(False)
 
 def sysrnwfwifiRnwf11FilesEnable(symbol, event):
     print("sysrnwfwifirnwf11FilesEnable")
@@ -681,16 +776,14 @@ def sysrnwfwifiRnwf11FilesEnable(symbol, event):
 		
 def syswifiAdvancedConfMenuVisible(symbol, event):
     print("syswifiAdvancedConfMenuVisible")
-    data = symbol.getComponent()
-    host = data.getSymbolValue("SYS_RNWF_HOST")
-    device = data.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
-    interface = data.getSymbolValue("SYS_RNWF_INTERFACE_MODE")
-
-    if (((host == "SAME54X-pro") and (device == "RNWF02") and (interface== "UART") )  or ((host == "SAME54X-pro") and (device == "WINCS02") and (interface== "SPI"))):
-        print("Menu : Host and Device are SUPPORTED - RN")
+    comp = symbol.getComponent()
+    device = comp.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
+    sam9x75Device = comp.getSymbolValue("SYS_RNWF_SAM_9x75_WIFI_DEVICE")
+    
+    if(device != "None" or sam9x75Device != "None"):
         symbol.setVisible(True)
     else:
-        print("Menu : Host and Device are NOT SUPPORTED")
+        symbol.setVisible(False)
 
 
 def syscomponentautoactivate(symbol, event):
@@ -699,27 +792,21 @@ def syscomponentautoactivate(symbol, event):
     host = data.getSymbolValue("SYS_RNWF_HOST")
     device = data.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
     interface = data.getSymbolValue("SYS_RNWF_INTERFACE_MODE")
+    sam9x75Device = data.getSymbolValue("SYS_RNWF_SAM_9x75_WIFI_DEVICE")
 
     print("host      : "+str(host))
     print("device    : "+str(device))
     print("interface : "+str(interface))
 
-    if ((host == "SAME54X-pro") and (device == "RNWF02")):
-        print("Device Inf  WIFI Menu Visible.")
-        symbol.setVisible(True)
-    elif ((host == "SAME54X-pro") and (device == "WINCS02")):
-        print("Device Inf  WIFI Menu Visible.")
-        symbol.setVisible(True)
-    elif ((host == "SAME54X-pro") and (device == "RNWF11")):
-        print("Device Inf  WIFI Menu Visible.")
+
+    if(device != "None" or sam9x75Device != "None"):
         symbol.setVisible(True)
     else:
-        print("Device Inf  NOT visible")
         symbol.setVisible(False)
-
-
+    
+    #----------------------------------------------------------SAM E54 Xpro & RNWF02 components activate-------------------------------------------------------------------#
     if ((host == "SAME54X-pro") and (device == "RNWF02") and (interface == "UART")):
-        print("Host and Device are SUPPORTED - RN")
+        print("Host and Device are SUPPORTED - SAME54Xpro - RNWF02")
 
         print("syscomponentautoactivate for RN ")
         if(Database.getComponentByID("BSP_SAM_E54_Xplained_Pro") == None):    
@@ -769,8 +856,11 @@ def syscomponentautoactivate(symbol, event):
             autoConnectTableuart = [[ "sys_console_0","sys_console_UART_dependency" , "sercom2", "SERCOM2_UART"]]
             res = Database.connectDependencies(autoConnectTableuart)
 
+
+
+    #----------------------------------------------------------SAM E54 Xpro & WINCS02 components activate-------------------------------------------------------------------#
     elif ((host == "SAME54X-pro") and (device == "WINCS02") and (interface == "SPI")):
-        print("Host and Device are SUPPORTED - NC")
+        print("(SAME54X) Host and Device are SUPPORTED SAME54Xpro - WINCS02")
 
         if(Database.getComponentByID("BSP_SAM_E54_Xplained_Pro") == None):    
             res = Database.activateComponents(["BSP_SAM_E54_Xplained_Pro"])
@@ -803,6 +893,7 @@ def syscomponentautoactivate(symbol, event):
             autoConnectTableuart = [[ "sys_console_0","sys_console_UART_dependency" , "sercom2", "SERCOM2_UART"]]
             res = Database.connectDependencies(autoConnectTableuart)
 
+        Database.setSymbolValue("sys_debug", "SYS_DEBUG_LEVEL","SYS_ERROR_INFO")
         Database.setSymbolValue("core", "DMAC_ENABLE_CH_2", True)
         Database.setSymbolValue("core", "DMAC_CHCTRLA_TRIGSRC_CH_2", "SERCOM2_Transmit")
 
@@ -859,9 +950,121 @@ def syscomponentautoactivate(symbol, event):
         Database.setSymbolValue("core","PIN_23_LAT","High")
         Database.setSymbolValue("core","PIN_18_FUNCTION_NAME","WDRV_WINC_INT")
         
-
         Database.setSymbolValue("core","XC32_HEAP_SIZE",80000)
 
+
+    #----------------------------------------------------------SAM 9x75 & WINCS02 components activate-------------------------------------------------------------------#    
+    elif ((host == "SAM9X75") and (sam9x75Device == "WINCS02") and (interface == "SPI")):
+        
+        print("Host and Device are SUPPORTED - SAM9x75 - WINCS02")
+
+        if(Database.getComponentByID("HarmonyCore") == None):    
+            res = Database.activateComponents(["HarmonyCore"])
+        
+        if(Database.getComponentByID("sys_console") == None):    
+            res = Database.activateComponents(["sys_console"])
+
+        if(Database.getComponentByID("sys_console_0") == None):    
+            res = Database.activateComponents(["sys_console_0"])
+        
+        if(Database.getComponentByID("dbgu") == None):    
+            res = Database.activateComponents(["dbgu"])
+
+        if(Database.getComponentByID("sys_debug") == None):    
+            res = Database.activateComponents(["sys_debug"])
+
+        if(Database.getComponentByID("drvWifiWincS02") == None):    
+            res = Database.activateComponents(["drvWifiWincS02"])
+            
+        if(Database.getComponentByID("flexcom4") == None):
+            res = Database.activateComponents(["flexcom4"])
+
+        if(Database.activateComponents(["tc0"]) == None):
+            res = Database.activateComponents(["tc0"])
+
+        autoConnectTableCon = [[ "sys_console_0","sys_console" , "sys_debug", "sys_debug_SYS_CONSOLE_dependency"]]
+        res = Database.connectDependencies(autoConnectTableCon)
+
+        autoConnectTableCon = [[ "sys_console_0","sys_console_UART_dependency" , "dbgu", "DBGU_UART"]]
+        res = Database.connectDependencies(autoConnectTableCon)
+
+        autoConnectTableCon = [[ "flexcom4","FLEXCOM4_SPI" , "drvWifiWincS02", "spi_dependency"]]
+        res = Database.connectDependencies(autoConnectTableCon)
+
+        autoConnectTabletc0 = [["tc0","TC0_TMR" , "sys_time", "sys_time_TMR_dependency"]]
+        res = Database.connectDependencies(autoConnectTabletc0)
+
+        Database.setSymbolValue("sys_debug", "SYS_DEBUG_LEVEL","SYS_ERROR_INFO")
+        
+        Database.setSymbolValue("HarmonyCore", "ENABLE_SYS_PORTS", True)    
+        Database.setSymbolValue("HarmonyCore", "ENABLE_SYS_RESET", True)
+        Database.setSymbolValue("HarmonyCore", "ENABLE_SYS_INT", True)
+        Database.setSymbolValue("HarmonyCore", "ENABLE_SYS_DMA", True)
+
+        Database.setSymbolValue("dbgu", "DBGU_TX_RING_BUFFER_SIZE", 1024)
+        Database.setSymbolValue("dbgu", "DBGU_RX_RING_BUFFER_SIZE", 1024)
+        Database.setSymbolValue("dbgu", "DBGU_CLK_SRC", 0)
+
+        Database.setSymbolValue("core","XC32_HEAP_SIZE",300000)
+
+        Database.setSymbolValue("drvWifiWincS02", "DRV_WIFI_WINC_TX_RX_DMA", True)
+        Database.setSymbolValue("drvWifiWincS02", "DRV_WIFI_WINC_PIO_SRC_SELECT", 76)
+
+        Database.setSymbolValue("flexcom4", "FLEXCOM_SPI_CSR0_BAUD_RATE", 25000000)
+
+        Database.setSymbolValue("sys_console", "SYS_CONSOLE_PRINT_BUFFER_SIZE", 1000) 
+                   
+        
+        #    Pin Configuration 
+        Database.setSymbolValue("core","PIN_223_FUNCTION_TYPE","FLEXCOM4_IO1")
+        Database.setSymbolValue("core","PIN_165_FUNCTION_TYPE","FLEXCOM4_IO0")
+        Database.setSymbolValue("core","PIN_149_FUNCTION_TYPE","FLEXCOM4_IO2")
+        Database.setSymbolValue("core","PIN_169_FUNCTION_TYPE","DBGU_DRXD")
+        Database.setSymbolValue("core","PIN_214_FUNCTION_TYPE","DBGU_DTXD")
+        
+        Database.setSymbolValue("core","PIN_238_FUNCTION_TYPE","GPIO")
+        Database.setSymbolValue("core","PIN_238_FUNCTION_NAME","WDRV_WINC_SSN")
+        Database.setSymbolValue("core","PIN_238_DIR","Out")
+        Database.setSymbolValue("core","PIN_238_LAT","High")
+        
+
+        Database.setSymbolValue("core","PIN_212_FUNCTION_TYPE","GPIO")
+        Database.setSymbolValue("core","PIN_212_FUNCTION_NAME","WDRV_WINC_RESETN")
+        Database.setSymbolValue("core","PIN_212_DIR","Out")
+        Database.setSymbolValue("core","PIN_212_LAT","High")
+
+        Database.setSymbolValue("core","PIN_106_FUNCTION_TYPE","GPIO")
+        Database.setSymbolValue("core","PIN_106_FUNCTION_NAME","USER_BUTTON")
+        
+        Database.setSymbolValue("core","PIN_95_FUNCTION_TYPE","GPIO")
+        Database.setSymbolValue("core","PIN_95_FUNCTION_NAME","WDRV_WINC_INT")
+        Database.setSymbolValue("core","PIN_95_PIO_INTERRUPT","Falling Edge")
+        Database.setSymbolValue("core","PIN_95_PU","True")
+
+        Database.setSymbolValue("core","PIN_94_FUNCTION_TYPE","GPIO")
+        Database.setSymbolValue("core","PIN_94_FUNCTION_NAME","LED_RED")
+        Database.setSymbolValue("core","PIN_94_DIR","Out")
+        Database.setSymbolValue("core","PIN_94_LAT","Low")
+
+        Database.setSymbolValue("core","PIN_94_FUNCTION_TYPE","GPIO")
+        Database.setSymbolValue("core","PIN_94_FUNCTION_NAME","LED_RED")
+        Database.setSymbolValue("core","PIN_94_DIR","Out")
+        Database.setSymbolValue("core","PIN_94_LAT","Low")
+
+        Database.setSymbolValue("core","PIN_48_FUNCTION_TYPE","GPIO")
+        Database.setSymbolValue("core","PIN_48_FUNCTION_NAME","LED_BLUE")
+        Database.setSymbolValue("core","PIN_48_DIR","Out")
+        Database.setSymbolValue("core","PIN_48_LAT","Low")
+
+        Database.setSymbolValue("core","PIN_50_FUNCTION_TYPE","GPIO")
+        Database.setSymbolValue("core","PIN_50_FUNCTION_NAME","LED_GREEN")
+        Database.setSymbolValue("core","PIN_50_DIR","Out")
+        Database.setSymbolValue("core","PIN_50_LAT","Low")
+
+
+        
+
+#----------------------------------------------------------SAM E54 Xpro & RNWF11 components activate-------------------------------------------------------------------#   
     elif ((host == "SAME54X-pro") and (device == "RNWF11") and (interface == "UART")):
         print("Host and Device are SUPPORTED - RN")
         if(Database.getComponentByID("BSP_SAM_E54_Xplained_Pro") == None):    
@@ -964,3 +1167,18 @@ def syswifiAPautoMenu(symbol, event):
  
 def destroyComponent(component):
     print("destroyComponent")
+
+def syswifiSTASecurityMenu(symbol, event):
+    print("syswifiSTASecurityMenu")
+
+def syswifiAPSecurityMenu(symbol, event):
+    print("syswifiAPSecurityMenu")
+
+def syswifiChannelErr(symbol, event):
+    print("syswifiChannelErr")
+
+def syswifiSTAMenu(symbol, event):
+    print("syswifiSTAMenu")
+
+def syswifiAPMenu(symbol, event):
+    print("syswifiAPMenu")

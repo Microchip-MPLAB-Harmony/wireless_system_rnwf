@@ -1,16 +1,17 @@
-
-<#if SYS_RNWF_NET_SOCK_CONF == true>
+/* RNWF02  NET System Service Configuration Options */
 
 <#if SYS_RNWF_NET_MODE0 == "SERVER">
 #define SYS_RNWF_NET_BIND_TYPE0					SYS_RNWF_BIND_LOCAL
 <#elseif SYS_RNWF_NET_MODE0 == "CLIENT">
 #define SYS_RNWF_NET_BIND_TYPE0					SYS_RNWF_BIND_REMOTE 
 </#if>
+
 <#if SYS_RNWF_NET_SOCK_TYPE0 == "UDP">
 #define SYS_RNWF_NET_SOCK_TYPE0					SYS_RNWF_SOCK_UDP
 <#elseif SYS_RNWF_NET_SOCK_TYPE0 == "TCP">
 #define SYS_RNWF_NET_SOCK_TYPE0					SYS_RNWF_SOCK_TCP 
 </#if>
+
 <#if SYS_RNWF_NET_SOCK_IP_TYPE0 == "IPv4">
 #define SYS_RNWF_NET_SOCK_TYPE_IPv4_0           4
 #define SYS_RNWF_NET_SOCK_TYPE_IPv6_LOCAL0      0
@@ -24,9 +25,11 @@
 #define SYS_RNWF_NET_SOCK_TYPE_IPv6_LOCAL0      0
 #define SYS_RNWF_NET_SOCK_TYPE_IPv6_GLOBAL0     6
 </#if>
+
 <#if SYS_RNWF_NET_MODE0 == "CLIENT">
-#define SYS_RNWF_NET_SOCK_ADDR0                 "${SYS_RNWF_NET_SOCK_IP_ADDR0}"
+#define SYS_RNWF_NET_SOCK_SERVER_ADDR0                 "${SYS_RNWF_NET_SOCK_IP_ADDR0}"
 </#if>
+
 #define SYS_RNWF_NET_SOCK_PORT0					${SYS_RNWF_NET_SOCK_PORT0}
 <#if SYS_RNWF_NET_ENABLE_TLS0 == true >
 #define SYS_RNWF_TLS_ENABLE0					1
@@ -34,7 +37,7 @@
 #define SYS_RNWF_NET_PEER_AUTH0                 "1"
 #define SYS_RNWF_NET_ROOT_CERT0					"${SYS_RNWF_NET_ROOT_CERT0}"
 <#else>
-#define SYS_RNWF_NET_PEER_AUTH0                 "0"
+#define SYS_RNWF_NET_PEER_AUTH0                 NULL
 #define SYS_RNWF_NET_ROOT_CERT0				    NULL
 </#if>
 <#if SYS_RNWF_NET_DEVICE_CERTIFICATE0 == "" >
@@ -47,10 +50,10 @@
 <#else>
 #define SYS_RNWF_NET_DEVICE_KEY0				"${SYS_RNWF_NET_DEVICE_KEY0}"
 </#if>
-<#if SYS_RNWD_NET_DEVICE_KEY_PWD0 == "" >
-#define SYS_RNWD_NET_DEVICE_KEY_PWD0			NULL
+<#if SYS_RNWF_NET_DEVICE_KEY_PWD0 == "" >
+#define SYS_RNWF_NET_DEVICE_KEY_PWD0			NULL
 <#else>
-#define SYS_RNWD_NET_DEVICE_KEY_PWD0			"${SYS_RNWD_NET_DEVICE_KEY_PWD0}"
+#define SYS_RNWF_NET_DEVICE_KEY_PWD0			"${SYS_RNWF_NET_DEVICE_KEY_PWD0}"
 </#if>
 <#if SYS_RNWF_NET_SERVER_NAME0 == "" >
 #define SYS_RNWF_NET_SERVER_NAME0				NULL
@@ -67,19 +70,21 @@
 <#else>
 #define SYS_RNWF_TLS_ENABLE0					0
 </#if>
-
-<#if SYS_RNWF_NET_NO_OF_SOCKS == 2>
+<#--  -Socket1 Configurations------------------------------------------------------------------------------------------------------------ -->
+<#if 2 <= SYS_RNWF_NET_NO_OF_SOCKS>
 
 <#if SYS_RNWF_NET_MODE1 == "SERVER">
 #define SYS_RNWF_NET_BIND_TYPE1					SYS_RNWF_BIND_LOCAL
 <#elseif SYS_RNWF_NET_MODE1 == "CLIENT">
 #define SYS_RNWF_NET_BIND_TYPE1					SYS_RNWF_BIND_REMOTE 
 </#if>
+
 <#if SYS_RNWF_NET_SOCK_TYPE1 == "UDP">
 #define SYS_RNWF_NET_SOCK_TYPE1					SYS_RNWF_SOCK_UDP
 <#elseif SYS_RNWF_NET_SOCK_TYPE1 == "TCP">
 #define SYS_RNWF_NET_SOCK_TYPE1					SYS_RNWF_SOCK_TCP 
 </#if>
+
 <#if SYS_RNWF_NET_SOCK_IP_TYPE1 == "IPv4">
 #define SYS_RNWF_NET_SOCK_TYPE_IPv4_1           4
 #define SYS_RNWF_NET_SOCK_TYPE_IPv6_LOCAL1      0
@@ -93,9 +98,11 @@
 #define SYS_RNWF_NET_SOCK_TYPE_IPv6_LOCAL1      0
 #define SYS_RNWF_NET_SOCK_TYPE_IPv6_GLOBAL1     6
 </#if>
-<#if SYS_RNWF_NET_MODE0 == "CLIENT">
-#define SYS_RNWF_NET_SOCK_ADDR1                "${SYS_RNWF_NET_SOCK_IP_ADDR1}"
+
+<#if SYS_RNWF_NET_MODE1 == "CLIENT">
+#define SYS_RNWF_NET_SOCK_SERVER_ADDR1                "${SYS_RNWF_NET_SOCK_IP_ADDR1}"
 </#if>
+
 #define SYS_RNWF_NET_SOCK_PORT1					${SYS_RNWF_NET_SOCK_PORT1}
 
 <#if SYS_RNWF_NET_ENABLE_TLS1 == true >
@@ -118,10 +125,10 @@
 #define SYS_RNWF_NET_DEVICE_KEY1				"${SYS_RNWF_NET_DEVICE_KEY1}"
 </#if>
 
-<#if SYS_RNWD_NET_DEVICE_KEY_PWD1 == "" >
-#define SYS_RNWD_NET_DEVICE_KEY_PWD1			NULL
+<#if SYS_RNWF_NET_DEVICE_KEY_PWD1 == "" >
+#define SYS_RNWF_NET_DEVICE_KEY_PWD1			NULL
 <#else>
-#define SYS_RNWD_NET_DEVICE_KEY_PWD1			"${SYS_RNWD_NET_DEVICE_KEY_PWD1}"
+#define SYS_RNWF_NET_DEVICE_KEY_PWD1			"${SYS_RNWF_NET_DEVICE_KEY_PWD1}"
 </#if>
 
 <#if SYS_RNWF_NET_SERVER_NAME1 == "" >
@@ -143,7 +150,168 @@
 </#if>
 </#if>
 
+<#--  -Socket2 Configurations------------------------------------------------------------------------------------------------------------ -->
+<#if 3 <= SYS_RNWF_NET_NO_OF_SOCKS>
+
+<#if SYS_RNWF_NET_MODE2 == "SERVER">
+#define SYS_RNWF_NET_BIND_TYPE2					SYS_RNWF_BIND_LOCAL
+<#elseif SYS_RNWF_NET_MODE2 == "CLIENT">
+#define SYS_RNWF_NET_BIND_TYPE2					SYS_RNWF_BIND_REMOTE 
 </#if>
+
+<#if SYS_RNWF_NET_SOCK_TYPE2 == "UDP">
+#define SYS_RNWF_NET_SOCK_TYPE2					SYS_RNWF_SOCK_UDP
+<#elseif SYS_RNWF_NET_SOCK_TYPE2 == "TCP">
+#define SYS_RNWF_NET_SOCK_TYPE2					SYS_RNWF_SOCK_TCP 
+</#if>
+
+<#if SYS_RNWF_NET_SOCK_IP_TYPE2 == "IPv4">
+#define SYS_RNWF_NET_SOCK_TYPE_IPv4_2           4
+#define SYS_RNWF_NET_SOCK_TYPE_IPv6_LOCAL2      0
+#define SYS_RNWF_NET_SOCK_TYPE_IPv6_GLOBAL2     0
+<#elseif SYS_RNWF_NET_SOCK_IP_TYPE2 == "IPv6 Local">
+#define SYS_RNWF_NET_SOCK_TYPE_IPv4_2           0
+#define SYS_RNWF_NET_SOCK_TYPE_IPv6_LOCAL2      6
+#define SYS_RNWF_NET_SOCK_TYPE_IPv6_GLOBAL2     0
+<#elseif SYS_RNWF_NET_SOCK_IP_TYPE2 == "IPv6 Global">
+#define SYS_RNWF_NET_SOCK_TYPE_IPv4_2           0
+#define SYS_RNWF_NET_SOCK_TYPE_IPv6_LOCAL2      0
+#define SYS_RNWF_NET_SOCK_TYPE_IPv6_GLOBAL2     6
+</#if>
+
+<#if SYS_RNWF_NET_MODE2 == "CLIENT">
+#define SYS_RNWF_NET_SOCK_SERVER_ADDR2                "${SYS_RNWF_NET_SOCK_IP_ADDR2}"
+</#if>
+
+#define SYS_RNWF_NET_SOCK_PORT2					${SYS_RNWF_NET_SOCK_PORT2}
+
+<#if SYS_RNWF_NET_ENABLE_TLS2 == true >
+#define SYS_RNWF_TLS_ENABLE2					1
+<#if SYS_RNWF_NET_PEER_AUTH2 == true >
+#define SYS_RNWF_NET_PEER_AUTH2                 "1"
+#define SYS_RNWF_NET_ROOT_CERT2					"${SYS_RNWF_NET_ROOT_CERT2}"
+<#else>
+#define SYS_RNWF_NET_PEER_AUTH2                 NULL
+#define SYS_RNWF_NET_ROOT_CERT2				    NULL
+</#if>
+<#if SYS_RNWF_NET_DEVICE_CERTIFICATE2 == "" >
+#define SYS_RNWF_NET_DEVICE_CERTIFICATE2		NULL
+<#else>
+#define SYS_RNWF_NET_DEVICE_CERTIFICATE2		"${SYS_RNWF_NET_DEVICE_CERTIFICATE2}"
+</#if>
+<#if SYS_RNWF_NET_DEVICE_KEY2 == "" >
+#define SYS_RNWF_NET_DEVICE_KEY2				NULL
+<#else>
+#define SYS_RNWF_NET_DEVICE_KEY2				"${SYS_RNWF_NET_DEVICE_KEY2}"
+</#if>
+
+<#if SYS_RNWF_NET_DEVICE_KEY_PWD2 == "" >
+#define SYS_RNWF_NET_DEVICE_KEY_PWD2			NULL
+<#else>
+#define SYS_RNWF_NET_DEVICE_KEY_PWD2			"${SYS_RNWF_NET_DEVICE_KEY_PWD2}"
+</#if>
+
+<#if SYS_RNWF_NET_SERVER_NAME2 == "" >
+#define SYS_RNWF_NET_SERVER_NAME2				NULL
+<#else>
+#define SYS_RNWF_NET_SERVER_NAME2				"${SYS_RNWF_NET_SERVER_NAME2}"
+</#if>		
+
+<#if SYS_RNWF_NET_DOMAIN_NAME_VERIFY2 == true >
+#define SYS_RNWF_NET_DOMAIN_NAME_VERIFY2        "1"
+#define SYS_RNWF_NET_DOMAIN_NAME2				"${SYS_RNWF_NET_DOMAIN_NAME2}"
+<#else>
+#define SYS_RNWF_NET_DOMAIN_NAME_VERIFY2        NULL
+#define SYS_RNWF_NET_DOMAIN_NAME2				NULL
+</#if>
+
+<#else>
+#define SYS_RNWF_TLS_ENABLE2					0
+</#if>
+</#if>
+
+<#--  -Socket3 Configurations------------------------------------------------------------------------------------------------------------ -->
+<#if 4 <= SYS_RNWF_NET_NO_OF_SOCKS>
+
+<#if SYS_RNWF_NET_MODE3 == "SERVER">
+#define SYS_RNWF_NET_BIND_TYPE3					SYS_RNWF_BIND_LOCAL
+<#elseif SYS_RNWF_NET_MODE3 == "CLIENT">
+#define SYS_RNWF_NET_BIND_TYPE3					SYS_RNWF_BIND_REMOTE 
+</#if>
+
+<#if SYS_RNWF_NET_SOCK_TYPE3 == "UDP">
+#define SYS_RNWF_NET_SOCK_TYPE3					SYS_RNWF_SOCK_UDP
+<#elseif SYS_RNWF_NET_SOCK_TYPE3 == "TCP">
+#define SYS_RNWF_NET_SOCK_TYPE3					SYS_RNWF_SOCK_TCP 
+</#if>
+
+<#if SYS_RNWF_NET_SOCK_IP_TYPE3 == "IPv4">
+#define SYS_RNWF_NET_SOCK_TYPE_IPv4_3           4
+#define SYS_RNWF_NET_SOCK_TYPE_IPv6_LOCAL3      0
+#define SYS_RNWF_NET_SOCK_TYPE_IPv6_GLOBAL3     0
+<#elseif SYS_RNWF_NET_SOCK_IP_TYPE3 == "IPv6 Local">
+#define SYS_RNWF_NET_SOCK_TYPE_IPv4_3           0
+#define SYS_RNWF_NET_SOCK_TYPE_IPv6_LOCAL3      6
+#define SYS_RNWF_NET_SOCK_TYPE_IPv6_GLOBAL3     0
+<#elseif SYS_RNWF_NET_SOCK_IP_TYPE3 == "IPv6 Global">
+#define SYS_RNWF_NET_SOCK_TYPE_IPv4_3           0
+#define SYS_RNWF_NET_SOCK_TYPE_IPv6_LOCAL3      0
+#define SYS_RNWF_NET_SOCK_TYPE_IPv6_GLOBAL3     6
+</#if>
+
+<#if SYS_RNWF_NET_MODE3 == "CLIENT">
+#define SYS_RNWF_NET_SOCK_SERVER_ADDR3                "${SYS_RNWF_NET_SOCK_IP_ADDR3}"
+</#if>
+
+#define SYS_RNWF_NET_SOCK_PORT3					${SYS_RNWF_NET_SOCK_PORT3}
+
+<#if SYS_RNWF_NET_ENABLE_TLS3 == true >
+#define SYS_RNWF_TLS_ENABLE3					1
+<#if SYS_RNWF_NET_PEER_AUTH3 == true >
+#define SYS_RNWF_NET_PEER_AUTH3                 "1"
+#define SYS_RNWF_NET_ROOT_CERT3					"${SYS_RNWF_NET_ROOT_CERT3}"
+<#else>
+#define SYS_RNWF_NET_PEER_AUTH3                 NULL
+#define SYS_RNWF_NET_ROOT_CERT3				    NULL
+</#if>
+<#if SYS_RNWF_NET_DEVICE_CERTIFICATE3 == "" >
+#define SYS_RNWF_NET_DEVICE_CERTIFICATE3		NULL
+<#else>
+#define SYS_RNWF_NET_DEVICE_CERTIFICATE3		"${SYS_RNWF_NET_DEVICE_CERTIFICATE3}"
+</#if>
+<#if SYS_RNWF_NET_DEVICE_KEY3 == "" >
+#define SYS_RNWF_NET_DEVICE_KEY3				NULL
+<#else>
+#define SYS_RNWF_NET_DEVICE_KEY3				"${SYS_RNWF_NET_DEVICE_KEY3}"
+</#if>
+
+<#if SYS_RNWF_NET_DEVICE_KEY_PWD3 == "" >
+#define SYS_RNWF_NET_DEVICE_KEY_PWD3			NULL
+<#else>
+#define SYS_RNWF_NET_DEVICE_KEY_PWD3			"${SYS_RNWF_NET_DEVICE_KEY_PWD3}"
+</#if>
+
+<#if SYS_RNWF_NET_SERVER_NAME3 == "" >
+#define SYS_RNWF_NET_SERVER_NAME3				NULL
+<#else>
+#define SYS_RNWF_NET_SERVER_NAME3				"${SYS_RNWF_NET_SERVER_NAME3}"
+</#if>		
+
+<#if SYS_RNWF_NET_DOMAIN_NAME_VERIFY3 == true >
+#define SYS_RNWF_NET_DOMAIN_NAME_VERIFY3        "1"
+#define SYS_RNWF_NET_DOMAIN_NAME3				"${SYS_RNWF_NET_DOMAIN_NAME3}"
+<#else>
+#define SYS_RNWF_NET_DOMAIN_NAME_VERIFY3        NULL
+#define SYS_RNWF_NET_DOMAIN_NAME3				NULL
+</#if>
+
+<#else>
+#define SYS_RNWF_TLS_ENABLE3					0
+</#if>
+</#if>
+
+<#--  ------------------------------------------------------------------------------------------------------------------------ -->
+
 <#if SYS_RNWF_NET_DEBUG_LOGS == true>
 #define SYS_RNWF_NET_DEBUG_LOGS                 1
 </#if>

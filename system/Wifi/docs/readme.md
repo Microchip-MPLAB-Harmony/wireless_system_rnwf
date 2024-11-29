@@ -5,6 +5,10 @@ The Wi-Fi service provides API’s to enable the following features:
 1.  Station mode
 2.  Soft AP mode
 
+    RNWF WINCS Wi-Fi Service 
+    <br />
+    ![Wi-Fi Settings: Advanced Configurations](images/RN_wifi_service.png)
+
 This section allows Wi-Fi service configuration as mentioned below:
 
 -   **Wi-Fi Modes:** Drop-down to select Wi-Fi modes.
@@ -18,14 +22,16 @@ This section allows Wi-Fi service configuration as mentioned below:
     Available options are:
     -   Mobile App
     -   Web Server
--   **SSID:** Wi-Fi Access Point/Network Name
--   **Passphrase:** Wi-Fi Access point/Network password
--   **Security Type:** Wi-Fi security protocol
+-   **SSID:** Wi-Fi Access Point/Network Name.
+-   **Passphrase:** Wi-Fi Access point/Network password.
+-   **Security Type:** Wi-Fi security protocol.
 -   **Auto Connect :** Enable to automatically connect to the AP when the device is in station mode.
--   **Country code :** Drop-down to select Country code.
-    -	GEN
-    -	USA
-    -	EMEA
+-   **Country code :** Drop-down to select country code based on the region where product will be used. After selecting desired for country code setting, user needs to call API (SYS_RNWF_WIFI_SrvCtrl) with parameter (SYS_RNWF_WIFI_SET_REGULATORY_DOMAIN) from
+the application code.
+For example: 
+```
+    SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_WIFI_SET_REGULATORY_DOMAIN, SYS_RNWF_COUNTRYCODE);
+```
 -   **Wi-Fi  BT Coexistence  :** Select to enable BT/Wi-Fi coexistence arbiter.
     -  **Interface Type :** Drop-down to select Interface type
         - 	3-wire interface (BT_Act, BT_Prio, WLAN_Act)
@@ -56,15 +62,13 @@ This section allows Wi-Fi service configuration as mentioned below:
 
     3.  ![Wi-Fi Settings: ProvisionMode](images/GUID-EDC42B75-C14A-457E-9FD8-5916C0DD9211-low.png)
 
-    4.  ![Wi-Fi Settings: Advanced Configurations](images/RN_wifi_service.png)
-
     <br />
 
 
 The Wi-Fi Service API prototype is as follows:
 
 ``` {#CODEBLOCK_C2D_2JJ_MYB .language-c}
-SYS_RNWF_RESULT_t SYS_RNWF_WIFI_SrvCtrl( SYS_RNWF_WIFI_SERVICE_t request, void *input)
+SYS_RNWF_RESULT_t SYS_RNWF_WIFI_SrvCtrl( SYS_RNWF_WIFI_SERVICE_t request, SYS_RNWF_WIFI_HANDLE_t wifiHandle);
 ```
 
 It handles following services and reports the result to application over the return code or through the registered callback.
@@ -72,13 +76,13 @@ It handles following services and reports the result to application over the ret
 |Option/Command|Input|Description|
 |:-------------|:----|:----------|
 |`SYS_RNWF_SET_WIFI_PARAMS`| Mode, SSID, Passphrase, Security, Autoenable | Configures the provided Wi-Fi details and Triggers the connection<br /> based on auto enable flag|
-|`SYS_RNWF_STA_CONNECT`|None|Triggers the Wi-Fi STA connection|
-|`SYS_RNWF_STA_DISCONNECT`|None|Disconnects the connection|
-|`SYS_RNWF_AP_DISABLE`|None|Disables the SoftAP mode|
-|`SYS_RNWF_SET_WIFI_AP_CHANNEL`|Channel number|Configure the Wi-Fi channel|
-|`SYS_RNWF_SET_WIFI_BSSID`|BSSID of AP \(String\)|Configure the Access point's BSSID to which RNWF needs to connect|
-| `SYS_RNWF_SET_WIFI_TIMEOUT,`|Seconds \(int\)|Configure Wi-Fi connection timeout|
-|`SYS_RNWF_SET_WIFI_HIDDEN,`|true or false|Configure Hidden mode SSID in SoftAP mode|
+|`SYS_RNWF_WIFI_STA_CONNECT`|None|Triggers the Wi-Fi STA connection|
+|`SYS_RNWF_WIFI_STA_DISCONNECT`|None|Disconnects the connection|
+|`SYS_RNWF_WIFI_AP_DISABLE`|None|Disables the SoftAP mode|
+|`SYS_RNWF_WIFI_SET_WIFI_AP_CHANNEL`|Channel number|Configure the Wi-Fi channel|
+|`SYS_RNWF_WIFI_SET_WIFI_BSSID`|BSSID of AP \(String\)|Configure the Access point's BSSID to which RNWF needs to connect|
+| `SYS_RNWF_WIFI_SET_WIFI_TIMEOUT,`|Seconds \(int\)|Configure Wi-Fi connection timeout|
+|`SYS_RNWF_WIFI_SET_WIFI_HIDDEN,`|true or false|Configure Hidden mode SSID in SoftAP mode|
 |`SYS_RNWF_WIFI_PASSIVE_SCAN`|None|Request/Trigger Wi-Fi passive scan|
 |`SYS_RNWF_WIFI_ACTIVE_SCAN`|None|Request/Trigger Wi-Fi active scan|
 |`SYS_RNWF_WIFI_SET_CALLBACK`|Callback Function handler|Register the call back for async events|
@@ -96,16 +100,16 @@ The following list captures the Wi-Fi callback event codes and their arguments
 
 |Event|Response Components|Comments|
 |:----|:------------------|:-------|
-|`SYS_RNWF_CONNECTED`|Association ID: IntegerConnected State: Integer|Wi-Fi connected event code. Reports the connection's Association ID and connected state|
-|`SYS_RNWF_DISCONNECTED`|Association ID: IntegerConnected State: Integer|Wi-Fi disconnected event code|
-|`SYS_RNWF_CONNECT_FAILED`|Fail event code: Integer|Wi-Fi connection failure event code|
-|`SYS_RNWF_DHCP_DONE`|DHCP IP: String|Wi-Fi DHCP complete event code|
-|`SYS_RNWF_SCAN_INDICATION`|RSSI: Received signal strength Sec Type \(Int\): Recommended security type to use connecting to this AP \(10 options\)Channel \(Int\): Channel \# of device<br />BSSID \(String\): BSSID of detected device<br />SSID \(String\): SSID of detected device|Scan results to report each scan list|
-|`SYS_RNWF_SCAN_DONE`|None|Scan complete event code|
-|`SYS_RNWF_IPv4_DHCP_DONE`|DHCP IPv4: String|Scan complete event code|
-|`SYS_RNWF_IPv6_DHCP_DONE`|DHCP IPv6: String|Scan complete event code|
-|`SYS_RNWF_WIFI_PING_RESP`|IP_ADDRESS : IP address of the target,RTT: Round trip time in milliseconds|Scan complete event code|
-|`SYS_RNWF_SNTP_UP`|ID : Parameter ID numberVAL: Parameter value|Scan complete event code|
+|`SYS_RNWF_WIFI_CONNECTED`|Association ID: IntegerConnected State: Integer|Wi-Fi connected event code. Reports the connection's Association ID and connected state|
+|`SYS_RNWF_WIFI_DISCONNECTED`|Association ID: IntegerConnected State: Integer|Wi-Fi disconnected event code|
+|`SYS_RNWF_WIFI_CONNECT_FAILED`|Fail event code: Integer|Wi-Fi connection failure event code|
+|`SYS_RNWF_WIFI_SCAN_INDICATION`|RSSI: Received signal strength Sec Type \(Int\): Recommended security type to use connecting to this AP \(10 options\)Channel \(Int\): Channel \# of device<br />BSSID \(String\): BSSID of detected device<br />SSID \(String\): SSID of detected device|Scan results to report each scan list|
+|`SYS_RNWF_WIFI_SCAN_DONE`|None|Scan complete event code|
+|`SYS_RNWF_WIFI_DHCP_IPV4_COMPLETE`|DHCP IPv4: String|Wi-Fi DHCP IPv4 complete event code|
+|`SYS_RNWF_WIFI_DHCP_IPV6_LOCAL_COMPLETE`|DHCP IPv6 Local: String|Wi-Fi DHCP IPv6 complete event code|
+|`SYS_RNWF_WIFI_DHCP_IPV6_GLOBAL_COMPLETE`|DHCP IPv6 Global: String|WiFI DHCP IPv6 global complete event code|
+|`SYS_RNWF_WIFI_PING_RESP`|IP_ADDRESS : IP address of the target,RTT: Round trip time in milliseconds|Pinf complete event code|
+|`SYS_RNWF_WIFI_SNTP_UP`|ID : Parameter ID numberVAL: Parameter value|SNTP complete event code|
 |`SYS_RNWF_WIFI_DNS_RESP`|IP address|DNS Resolve Event code|
 |||
 
@@ -171,60 +175,81 @@ static void APP_RNWF_usartDmaChannelHandler(DMAC_TRANSFER_EVENT event, uintptr_t
 
 
 /* Application Wi-fi Callback Handler function */
-void SYS_RNWF_WIFI_CallbackHandler(SYS_RNWF_WIFI_EVENT_t event, uint8_t *p_str)
+void APP_WIFI_Callback(SYS_RNWF_WIFI_EVENT_t event, SYS_RNWF_WIFI_HANDLE_t wifiHandle)
 {
+    uint8_t *p_str =(uint8_t *)wifiHandle;
             
     switch(event)
     {
         /* SNTP UP event code*/
-        case SYS_RNWF_SNTP_UP:
+        case SYS_RNWF_WIFI_SNTP_UP:
         {            
-            SYS_CONSOLE_PRINT("SNTP UP:%s\n", &p_str[0]); 
-            break;
+                
+                static uint8_t flag =1;
+                if(flag==1)
+                {
+                    SYS_CONSOLE_PRINT("SNTP UP:%s\n", &p_str[0]);  
+                    flag=0;
+                }
+                break;
         }
         
         /* Wi-Fi connected event code*/
-        case SYS_RNWF_CONNECTED:
+        case SYS_RNWF_WIFI_CONNECTED:
         {
-            SYS_CONSOLE_PRINT("Wi-Fi Connected    \r\n");
+            SYS_CONSOLE_PRINT("Wi-Fi Connected\r\n");
             break;
         }
         
         /* Wi-Fi disconnected event code*/
-        case SYS_RNWF_DISCONNECTED:
+        case SYS_RNWF_WIFI_DISCONNECTED:
         {
             SYS_CONSOLE_PRINT("Wi-Fi Disconnected\nReconnecting... \r\n");
-            SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_STA_CONNECT, NULL);
+            SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_WIFI_STA_CONNECT, NULL);
             break;
         }
         
         /* Wi-Fi DHCP complete event code*/
-        case SYS_RNWF_IPv4_DHCP_DONE:
+        case SYS_RNWF_WIFI_DHCP_IPV4_COMPLETE:
         {
             SYS_CONSOLE_PRINT("DHCP Done...%s \r\n",&p_str[2]); 
+            strncpy((char *)g_devIp,(const char *) &p_str[3], strlen((const char *)(&p_str[3]))-1);
             break;
         }
         
-        /* Wi-Fi IPv6 DHCP complete event code*/
-        case SYS_RNWF_IPv6_DHCP_DONE:
+         /* Wi-Fi IPv6 DHCP complete event code*/
+        case SYS_RNWF_WIFI_DHCP_IPV6_LOCAL_COMPLETE:
         {
-            SYS_CONSOLE_PRINT("IPv6 DHCP Done...%s \r\n",&p_str[2]); 
+            SYS_CONSOLE_PRINT("IPv6 Local DHCP Done...%s \r\n",&p_str[2]); 
+            
+            /*Local IPv6 address code*/     
+            break;
+        }
+        case SYS_RNWF_WIFI_DHCP_IPV6_GLOBAL_COMPLETE:
+        {
+            SYS_CONSOLE_PRINT("IPv6 Global DHCP Done...%s \r\n",&p_str[2]); 
+            
+            /*Global IPv6 address code*/     
             break;
         }
         
         /* Wi-Fi scan indication event code*/
-        case SYS_RNWF_SCAN_INDICATION:
+        case SYS_RNWF_WIFI_SCAN_INDICATION:
         {
             break;
         }
-         
+        
         /* Wi-Fi scan complete event code*/
-        case SYS_RNWF_SCAN_DONE:
+        case SYS_RNWF_WIFI_SCAN_DONE:
         {
             break;
         }
+        
         default:
-            break;             
+        {
+            break;
+        }
+                    
     }    
 }
 
@@ -258,13 +283,17 @@ void APP_Tasks ( void )
         {      
               
             /* RNWF Application Callback register */
-            SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_WIFI_SET_CALLBACK, SYS_RNWF_WIFI_CallbackHandler);      
+            SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_WIFI_SET_CALLBACK, APP_WIFI_Callback);
           
-            /* Wi-Fii Connectivity */
-            SYS_RNWF_WIFI_PARAM_t wifi_sta_cfg = {RNWF_WIFI_DEVMODE, SYS_RNWF_WIFI_STA_SSID, SYS_RNWF_WIFI_STA_PWD, SYS_RNWF_STA_SECURITY, SYS_RNWF_WIFI_STA_AUTOCONNECT};  
-            SYS_CONSOLE_PRINT("Connecting to %s\r\n",SYS_RNWF_WIFI_STA_SSID);
+		    /* Set Regulatory domain/Country Code */
+            const char *regDomain = SYS_RNWF_COUNTRYCODE;
+            SYS_CONSOLE_PRINT("\r\nSetting regulatory domain : %s\r\n",regDomain);
+            SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_WIFI_SET_REGULATORY_DOMAIN, (void *)regDomain);
+			
+            /* Wi-Fi Connectivity */
+            SYS_CONSOLE_PRINT("Connecting to : %s\r\n",SYS_RNWF_WIFI_STA_SSID);
+            SYS_RNWF_WIFI_PARAM_t wifi_sta_cfg = {SYS_RNWF_WIFI_MODE_STA, SYS_RNWF_WIFI_STA_SSID, SYS_RNWF_WIFI_STA_PWD, SYS_RNWF_STA_SECURITY, SYS_RNWF_WIFI_STA_AUTOCONNECT};        
             SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_SET_WIFI_PARAMS, &wifi_sta_cfg);
-
             g_appData.state = APP_STATE_TASK;
             break;
         }

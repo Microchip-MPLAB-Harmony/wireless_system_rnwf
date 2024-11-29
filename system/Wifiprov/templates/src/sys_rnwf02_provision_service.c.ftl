@@ -102,7 +102,10 @@ SYS_RNWF_NET_SOCKET_t g_provisionSocket = {
     .sock_type = SYS_RNWF_NET_SOCK_TYPE0,
 
     /*IP type (IPv4/IPv6)*/
-    .IP        = SYS_RNWF_NET_IPV4,
+    .ip_type       = SYS_RNWF_NET_IPV4,
+    
+    /*No of clients sockets*/
+    .noOfClients   = SYS_RNWF_NET_NO_OF_CLIENT_SOCKETS,
 
 };
 
@@ -119,7 +122,7 @@ SYS_RNWF_NET_SOCKET_t g_provisionSocket = {
 /*Parse or translate security type received from mobile app*/
 static SYS_RNWF_WIFI_SECURITY_t SYS_RNWF_PROV_ParseAuth(uint8_t secType)
 {
-    SYS_RNWF_WIFI_SECURITY_t authType = SYS_RNWF_OPEN;
+    SYS_RNWF_WIFI_SECURITY_t authType = SYS_RNWF_WIFI_SECURITY_OPEN;
     
     switch(secType)
     {
@@ -165,7 +168,7 @@ static SYS_RNWF_RESULT_t SYS_RNWF_PROV_AppParse(uint8_t *wifiCofnig, SYS_RNWF_WI
              
             wifi_config->security = SYS_RNWF_PROV_ParseAuth(security);
             
-            if (SYS_RNWF_OPEN < wifi_config->security &&  wifi_config->security <= SYS_RNWF_WPA3)
+            if (SYS_RNWF_WIFI_SECURITY_OPEN < wifi_config->security &&  wifi_config->security <= SYS_RNWF_WIFI_SECURITY_WPA3)
             {
                 p = strtok(NULL, ",");
                 if (p) 
@@ -173,7 +176,7 @@ static SYS_RNWF_RESULT_t SYS_RNWF_PROV_AppParse(uint8_t *wifiCofnig, SYS_RNWF_WI
                 else
                     ret = SYS_RNWF_FAIL;
             } 
-            else if (wifi_config->security == SYS_RNWF_OPEN)
+            else if (wifi_config->security == SYS_RNWF_WIFI_SECURITY_OPEN)
                 wifi_config->passphrase = NULL;
             else
                 ret = SYS_RNWF_FAIL;
@@ -446,14 +449,14 @@ static void SYS_RNWF_PROV_WifiCallback(SYS_RNWF_WIFI_EVENT_t event, uint8_t *p_s
 {            
     switch(event)
     {
-        case SYS_RNWF_IPv4_DHCP_DONE:
+        case SYS_RNWF_WIFI_DHCP_IPV4_COMPLETE:
         {
             SYS_RNWF_PROV_DBG_MSG("DHCP IP:%s\r\n", &p_str[2]);
             SYS_RNWF_NET_SockSrvCtrl(SYS_RNWF_NET_SOCK_TCP_OPEN, &g_provisionSocket);
         }    
         break;
 
-        case SYS_RNWF_SCAN_INDICATION:
+        case SYS_RNWF_WIFI_SCAN_INDICATION:
         {
 <#if sysWifiRNWF.SYS_RNWF_WIFI_PROV_METHOD == "PROV_WEB_SERVER">             
             uint16_t resp_len = strlen((char *)p_str);
@@ -471,7 +474,7 @@ static void SYS_RNWF_PROV_WifiCallback(SYS_RNWF_WIFI_EVENT_t event, uint8_t *p_s
         }
         break; 
 
-        case SYS_RNWF_SCAN_DONE:  
+        case SYS_RNWF_WIFI_SCAN_DONE:  
         {          
 <#if sysWifiRNWF.SYS_RNWF_WIFI_PROV_METHOD == "PROV_WEB_SERVER">
             if(g_scanSocket)             
@@ -492,7 +495,7 @@ static void SYS_RNWF_PROV_WifiCallback(SYS_RNWF_WIFI_EVENT_t event, uint8_t *p_s
 }
 
 /*Provision Service control function*/
-SYS_RNWF_RESULT_t SYS_RNWF_PROV_SrvCtrl(SYS_RNWF_PROV_SERVICE_t request, void *input)  {
+SYS_RNWF_RESULT_t SYS_RNWF_PROV_SrvCtrl(SYS_RNWF_PROV_SERVICE_t request, SYS_RNWF_WIFI_PROV_HANDLE_t provHandle)  {
     
     switch(request)
     {
@@ -532,8 +535,8 @@ SYS_RNWF_RESULT_t SYS_RNWF_PROV_SrvCtrl(SYS_RNWF_PROV_SERVICE_t request, void *i
         
         case SYS_RNWF_PROV_SET_CALLBACK:
         {
-            if(input != NULL)
-                g_provCallBackHandler = (SYS_RNWF_PROV_CALLBACK_t)input;
+            if(provHandle != NULL)
+                g_provCallBackHandler = (SYS_RNWF_PROV_CALLBACK_t)provHandle;
         }    
         break;
             

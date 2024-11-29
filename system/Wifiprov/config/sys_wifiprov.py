@@ -150,19 +150,15 @@ def setVal(component, symbol, value):
     print("setVal")
 
 def sysrnwfprovRnwf02FilesEnable(symbol, event):
-    print("prov sysrnwfwifirnwf02FilesEnable")
-    if(Database.getComponentByID("sysWifiRNWF") == None):
-        print("prov NONE  sysrnwfwifiRnwf02FilesEnable1")
+    print("RNWF02 Files :Net sysrnwfwifirnwf02FilesEnable")
 
-    host = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_HOST")
     device = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_WIFI_DEVICE")
     interface = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_INTERFACE_MODE")
 
-    if ((host == "SAME54X-pro") and (device == "RNWF02") and (interface== "UART")):
-        print("prov File : Host and Device are SUPPORTED - RN")
+    if device == "RNWF02" and interface== "UART":
         symbol.setEnabled(True)
     else:
-        print("prov File : Host and Device are NOT SUPPORTED")
+        symbol.setEnabled(False)
 
 def sysrnwfprovRnwf11FilesEnable(symbol, event):
     print("prov sysrnwfwifirnwf11FilesEnable")
@@ -181,25 +177,16 @@ def sysrnwfprovRnwf11FilesEnable(symbol, event):
 
 
 def sysrnwfprovWincs02FilesEnable(symbol, event):
-    print("prov sysrnwfwifiWincs02FilesEnable")
-    # data = Database.getComponentByID("sysWifiRNWFComponent")
-    if(Database.getComponentByID("sysWifiRNWF") == None):
-        print("prov NONE  sysrnwfwifiWincs02FilesEnable")
+    print("WINCS02 Files : Prov sysrnwfnetWincs02FilesEnable")
 
-    host = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_HOST")
     device = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_WIFI_DEVICE")
     interface = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_INTERFACE_MODE")
+    sam9x75Device = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_SAM_9x75_WIFI_DEVICE")
 
-    print("prov host      : "+str(host))
-    print("prov device    : "+str(device))
-    print("prov interface : "+str(interface))
-
-    if ((host == "SAME54X-pro") and (device == "WINCS02") and (interface == "SPI")):
-        print("prov : Host and Device are SUPPORTED - NC")
+    if (device == "WINCS02" or sam9x75Device == "WINCS02") and interface == "SPI":
         symbol.setEnabled(True)
     else:
-        print("prov : Host and Device are NOT SUPPORTED")
-
+        symbol.setEnabled(False)
 
 def finalizeComponent(syswifiprovComponent):
     print("finalizeComponent syswifiprovComponent.")

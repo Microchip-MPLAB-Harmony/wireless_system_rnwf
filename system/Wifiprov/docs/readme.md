@@ -3,7 +3,7 @@
 The provisioning service helps to configure the Wi-Fi interface credentials. It supports TCP tunnel and Web server based provisioning services. It implements or handles all the required AT commands to start the module in Access Point mode and open up a TCP tunnel or serve a HTML web page to receive the Wi-Fi credentials. The provisioning service call API syntax is provided below:
 
 ``` {#CODEBLOCK_GL5_RSC_PYB .language-c}
-SYS_RNWF_RESULT_t SYS_RNWF_PROV_SrvCtrl(SYS_RNWF_PROV_SERVICE_t request, void *input)
+SYS_RNWF_RESULT_t SYS_RNWF_PROV_SrvCtrl(SYS_RNWF_PROV_SERVICE_t request, SYS_RNWF_WIFI_PROV_HANDLE_t);
 ```
 
 [**Provisioning Service Configuration in MCC**](../../RNWF_wifi/docs/readme.md)
@@ -36,6 +36,11 @@ Following example code showcases the use of provisioning service
     Provisioning application
 */
 
+// *****************************************************************************
+// *****************************************************************************
+// Section: Included Files
+// *****************************************************************************
+// *****************************************************************************
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>                    
@@ -43,7 +48,7 @@ Following example code showcases the use of provisioning service
 #include <stdlib.h>                    
 
 /* This section lists the other files that are included in this file.*/
-#include "app.h"
+#include "app_rnwf02.h"
 #include "user.h"
 #include "definitions.h"      
 #include "configuration.h"
@@ -53,6 +58,45 @@ Following example code showcases the use of provisioning service
 #include "system/sys_rnwf_system_service.h"
 #include "system/wifi/sys_rnwf_wifi_service.h"
 #include "system/wifiprov/sys_rnwf_provision_service.h"
+
+
+// *****************************************************************************
+// *****************************************************************************
+// Section: Global Data Definitions
+// *****************************************************************************
+// *****************************************************************************
+
+// *****************************************************************************
+
+// *****************************************************************************
+/* Application Data
+
+  Summary:
+    Holds application data
+
+  Description:
+    This structure holds the application's data.
+
+  Remarks:
+    This structure should be initialized by the APP_Initialize function.
+
+    Application strings and buffers are be defined outside this structure.
+*/
+
+/*Shows the application's current state*/
+static APP_DATA g_appData;
+
+
+/* Variable to check the UART transfer */
+static volatile bool g_isUARTTxComplete = true;
+
+/*Application buffer to store data*/
+static uint8_t g_appBuf[SYS_RNWF_IF_LEN_MAX];
+// *****************************************************************************
+// *****************************************************************************
+// Section: Application Local Functions
+// *****************************************************************************
+// *****************************************************************************
 
 
 /* DMAC Channel Handler Function */
@@ -65,36 +109,48 @@ static void APP_RNWF_usartDmaChannelHandler ( DMAC_TRANSFER_EVENT event, uintptr
 }
 
 /* Application Wifi Callback Handler function */
-static void SYS_RNWF_WIFI_CallbackHandler ( SYS_RNWF_WIFI_EVENT_t event, uint8_t *p_str)
-{      
+static void SYS_RNWF_WIFI_CallbackHandler ( SYS_RNWF_WIFI_EVENT_t event, SYS_RNWF_WIFI_HANDLE_t wifiHandler)
+{
+    uint8_t *p_str = (uint8_t *)wifiHandler;
     switch(event)
     {   
         /* Wi-Fi connected event code*/
-        case SYS_RNWF_CONNECTED:
+        case SYS_RNWF_WIFI_CONNECTED:
         {
             SYS_CONSOLE_PRINT("Wi-Fi Connected    \r\n");
             break;
         }
         
         /* Wi-Fi disconnected event code*/
-        case SYS_RNWF_DISCONNECTED:
+        case SYS_RNWF_WIFI_DISCONNECTED:
         {
             SYS_CONSOLE_PRINT("Wi-Fi Disconnected\nReconnecting... \r\n");
-            SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_STA_CONNECT, NULL);
+            SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_WIFI_STA_CONNECT, NULL);
             break;
         }
         
         /* Wi-Fi DHCP complete event code*/
-        case SYS_RNWF_IPv4_DHCP_DONE:
+        case SYS_RNWF_WIFI_DHCP_IPV4_COMPLETE:
         {
             SYS_CONSOLE_PRINT("IPv4 DHCP Done...%s \r\n",&p_str[2]); 
             break;
         }
         
-        /* Wi-Fi IPv6 DHCP complete event code*/
-        case SYS_RNWF_IPv6_DHCP_DONE:
+        /* Wi-Fi IPv6 Local DHCP complete event code*/
+        case SYS_RNWF_WIFI_DHCP_IPV6_LOCAL_COMPLETE:
         {
-            SYS_CONSOLE_PRINT("IPv6 DHCP Done...%s \r\n",&p_str[2]); 
+            SYS_CONSOLE_PRINT("IPv6 Local DHCP Done...%s \r\n",&p_str[2]); 
+            
+            /*Local IPv6 address code*/     
+            break;
+        }
+        
+        /* Wi-Fi IPv6 Global DHCP complete event code*/
+        case SYS_RNWF_WIFI_DHCP_IPV6_GLOBAL_COMPLETE:
+        {
+            SYS_CONSOLE_PRINT("IPv6 Global DHCP Done...%s \r\n",&p_str[2]); 
+            
+            /*Global IPv6 address code*/     
             break;
         }
         
@@ -106,8 +162,9 @@ static void SYS_RNWF_WIFI_CallbackHandler ( SYS_RNWF_WIFI_EVENT_t event, uint8_t
 }
 
 /* Application Wifi Provision Callback handler */
-static void SYS_RNWF_WIFIPROV_CallbackHandler ( SYS_RNWF_PROV_EVENT_t event, uint8_t *p_str)
+static void SYS_RNWF_WIFIPROV_CallbackHandler ( SYS_RNWF_PROV_EVENT_t event,SYS_RNWF_WIFI_PROV_HANDLE_t wifiProvHandler)
 {
+    uint8_t *p_str = (uint8_t *)wifiProvHandler;
     switch(event)
     {
         /**<Provisionging complete*/
@@ -131,12 +188,13 @@ static void SYS_RNWF_WIFIPROV_CallbackHandler ( SYS_RNWF_PROV_EVENT_t event, uin
         {
             break;
         }
-    } 
+    }
+    
 }
 
 
 /* Application Initialization function */
-void APP_Initialize ( void )
+void APP_RNWF02_Initialize ( void )
 {
     /* Place the App state machine in its initial state. */
     g_appData.state = APP_STATE_INITIALIZE;
@@ -144,7 +202,7 @@ void APP_Initialize ( void )
 
 
 /* Maintain the application's state machine. */
-void APP_Tasks ( void )
+void APP_RNWF02_Tasks ( void )
 {
     switch(g_appData.state)
     {
@@ -161,7 +219,21 @@ void APP_Tasks ( void )
         /* Register the necessary callbacks */
         case APP_STATE_REGISTER_CALLBACK:
         {
-
+            
+            SYS_RNWF_SYSTEM_SrvCtrl(SYS_RNWF_SYSTEM_GET_MAN_ID, g_appBuf);    
+            SYS_CONSOLE_PRINT("\r\nManufacturer = %s\r\n", g_appBuf);  
+             
+            SYS_RNWF_SYSTEM_SrvCtrl(SYS_RNWF_SYSTEM_SW_REV, g_appBuf);    
+            SYS_CONSOLE_PRINT("\r\nSoftware Revision:- %s\r\n", g_appBuf);
+            
+            SYS_RNWF_SYSTEM_SrvCtrl(SYS_RWWF_SYSTEM_GET_WIFI_INFO, g_appBuf);    
+            SYS_CONSOLE_PRINT("\r\nWi-Fi Info:- \r\n%s\r\n", g_appBuf);
+            
+            /* Set Regulatory domain/Country Code */
+            const char *regDomain = SYS_RNWF_COUNTRYCODE;
+            SYS_CONSOLE_PRINT("\r\nSetting regulatory domain : %s\r\n",regDomain);
+            SYS_RNWF_WIFI_SrvCtrl(SYS_RNWF_WIFI_SET_REGULATORY_DOMAIN, (void *)regDomain);
+            
             // Enable Provisioning Mode
             SYS_RNWF_PROV_SrvCtrl(SYS_RNWF_PROV_ENABLE, NULL);
             SYS_RNWF_PROV_SrvCtrl(SYS_RNWF_PROV_SET_CALLBACK, (void *)SYS_RNWF_WIFIPROV_CallbackHandler);

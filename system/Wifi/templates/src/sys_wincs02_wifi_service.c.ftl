@@ -46,28 +46,40 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+
 /* This section lists the other files that are included in this file.
  */
-
 #include "system/wifi/sys_wincs_wifi_service.h"
 #include "driver/wifi/wincs02/include/wdrv_winc.h"
 #include "driver/wifi/wincs02/include/wdrv_winc_client_api.h"
+
 /* ************************************************************************** */
 /* ************************************************************************** */
 /* Section: File Scope or Global Data                                         */
 /* ************************************************************************** */
 /* ************************************************************************** */
-SYS_WINCS_WIFI_CALLBACK_t g_wifiCallBackHandler[SYS_WINCS_WIFI_SERVICE_CB_MAX];
 
-static WDRV_WINC_AUTH_CONTEXT authContext;
+// Handle for the Wi-Fi driver, initialized to an invalid handle
+static DRV_HANDLE             g_wdrvHandle = DRV_HANDLE_INVALID;
 
-static WDRV_WINC_BSS_CONTEXT  bssContext;
+// Authentication context for the Wi-Fi driver
+static WDRV_WINC_AUTH_CONTEXT g_authContext;
 
-static uint8_t bssFindIdx;
+// Basic Service Set (BSS) context for the Wi-Fi driver
+static WDRV_WINC_BSS_CONTEXT  g_bssContext;
 
-static OSAL_SEM_HANDLE_TYPE bssFindResult;
+// Index for finding BSS results
+static uint8_t                g_bssFindIdx;
 
-static DRV_HANDLE wdrvHandle = DRV_HANDLE_INVALID;
+// Semaphore handle for BSS find result synchronization
+static OSAL_SEM_HANDLE_TYPE   g_bssFindResult;
+
+// Wi-Fi connection configuration structure
+static WDRV_WINC_CONN_CFG     g_wifiCfg;
+
+// Array of Wi-Fi callback handlers, with a size defined by SYS_WINCS_WIFI_SERVICE_CB_MAX
+SYS_WINCS_WIFI_CALLBACK_t     g_wifiCallBackHandler[SYS_WINCS_WIFI_SERVICE_CB_MAX];
+
 
 /* ************************************************************************** */
 /* ************************************************************************** */
@@ -75,7 +87,28 @@ static DRV_HANDLE wdrvHandle = DRV_HANDLE_INVALID;
 /* ************************************************************************** */
 /* ************************************************************************** */
 
-/* AP callback */
+// *****************************************************************************
+// AP Notify Callback
+//
+// Summary:
+//    Callback function for AP notifications.
+//
+// Description:
+//    This function is called to notify the application of changes in the connection
+//    state of an associated client.
+//
+// Parameters:
+//    handle - The handle to the WINC driver instance
+//    assocHandle - The handle to the associated client
+//    currentState - The current connection state of the associated client, represented by ::WDRV_WINC_CONN_STATE
+//
+// Returns:
+//    None.
+//
+// Remarks:
+//    This function is typically registered with the WINC driver to handle AP notifications.
+// *****************************************************************************
+
 static void SYS_WINCS_WIFI_ApNotifyCallback
 (
     DRV_HANDLE handle, 
@@ -83,7 +116,6 @@ static void SYS_WINCS_WIFI_ApNotifyCallback
     WDRV_WINC_CONN_STATE currentState
 )
 {
-    
     switch (currentState)
     {
         case WDRV_WINC_CONN_STATE_CONNECTED:
@@ -94,7 +126,8 @@ static void SYS_WINCS_WIFI_ApNotifyCallback
             status = WDRV_WINC_AssocPeerAddressGet(assocHandle, &macAddr);
             if (WDRV_WINC_STATUS_OK == status)
             {
-                #if SYS_WINCS_WIFI_DEBUG_LOGS
+                #ifdef SYS_WINCS_WIFI_DEBUG_LOGS
+                SYS_WINCS_WIFI_DBG_MSG("Association state is connected\r\n");
                 SYS_WINCS_WIFI_DBG_MSG("Wifi State :: CONNECTED :: MAC : %02X:%02X:%02X:%02X:%02X:%02X\r\n",
                                         macAddr.addr[0], macAddr.addr[1], macAddr.addr[2],
                                         macAddr.addr[3], macAddr.addr[4], macAddr.addr[5]);
@@ -106,31 +139,63 @@ static void SYS_WINCS_WIFI_ApNotifyCallback
         
         case WDRV_WINC_CONN_STATE_CONNECTING:
         {
-            SYS_WINCS_WIFI_DBG_MSG("Wifi State :: Connecting.....\r\n");
+            #ifdef SYS_WINCS_WIFI_DEBUG_LOGS
+            SYS_WINCS_WIFI_DBG_MSG("Association state is connecting......\r\n");
+            #endif
             break;
         }
         
         case WDRV_WINC_CONN_STATE_FAILED:
         {
-            SYS_WINCS_WIFI_DBG_MSG("Wifi State :: Failed \r\n");
+            #ifdef SYS_WINCS_WIFI_DEBUG_LOGS
+            SYS_WINCS_WIFI_DBG_MSG("Association state is connection failed. \r\n");
+            #endif
             break;
         }
         
         case WDRV_WINC_CONN_STATE_DISCONNECTED:
         {
-            SYS_WINCS_WIFI_DBG_MSG("Wifi State DISCONNECTED \r\n");
+            #ifdef SYS_WINCS_WIFI_DEBUG_LOGS
+            SYS_WINCS_WIFI_DBG_MSG("Association state is disconnected. \r\n");
+            #endif
             break;
         }
         
         case WDRV_WINC_CONN_STATE_ROAMED:
         {
+            #ifdef SYS_WINCS_WIFI_DEBUG_LOGS
+            SYS_WINCS_WIFI_DBG_MSG("Association state is roamed. \r\n");
+            #endif
             break;
         }
     }
 }
 
 
-
+// *****************************************************************************
+// BSS Find Notify Callback
+//
+// Summary:
+//    Callback function for BSS find notifications.
+//
+// Description:
+//    This function is called to notify the application of the results of a BSS
+//    (Basic Service Set) find operation. It provides information about each BSS
+//    found during the scan.
+//
+// Parameters:
+//    handle - The handle to the WINC driver instance
+//    index - The index of the current BSS in the list of found BSSs
+//    ofTotal - The total number of BSSs found during the scan
+//    pBSSInfo - A pointer to a structure containing information about the current BSS
+//
+// Returns:
+//    true - Continue to receive notifications for subsequent BSSs
+//    false - Stop receiving notifications for subsequent BSSs
+//
+// Remarks:
+//    This function is typically registered with the WINC driver to handle BSS find notifications.
+// *****************************************************************************
 
 static bool SYS_WINCS_WIFI_BssFindNotifyCallback
 (
@@ -154,14 +219,38 @@ static bool SYS_WINCS_WIFI_BssFindNotifyCallback
             SYS_WINCS_WIFI_DBG_MSG(">>#      Auth Type\r\n>>#\r\n");
         }
 
-        bssFindIdx = index;
+        g_bssFindIdx = index;
 
-        OSAL_SEM_Post(&bssFindResult);
+        OSAL_SEM_Post(&g_bssFindResult);
     }
 
     return false;
 }
 
+
+// *****************************************************************************
+// Connect Notify Callback
+//
+// Summary:
+//    Callback function for connection state notifications.
+//
+// Description:
+//    This function is called to notify the application of changes in the connection
+//    state of the WINC module. It provides information about the current connection
+//    state.
+//
+// Parameters:
+//    handle - The handle to the WINC driver instance
+//    assocHandle - The handle to the associated connection
+//    currentState - The current connection state, represented by ::WDRV_WINC_CONN_STATE
+//
+// Returns:
+//    None.
+//
+// Remarks:
+//    This function is typically registered with the WINC driver to handle connection
+//    state change notifications.
+// *****************************************************************************
 
 static void SYS_WINCS_WIFI_ConnectNotifyCallback 
 ( 
@@ -180,38 +269,64 @@ static void SYS_WINCS_WIFI_ConnectNotifyCallback
         /* Association state is disconnected. */
         case WDRV_WINC_CONN_STATE_DISCONNECTED:
         {
-            wifi_cb_func(SYS_WINCS_DISCONNECTED, NULL);
+            wifi_cb_func(SYS_WINCS_WIFI_DISCONNECTED, (SYS_WINCS_WIFI_HANDLE_t) assocHandle);
             break;
         }
 
         /* Association state is connecting. */
         case WDRV_WINC_CONN_STATE_CONNECTING:
         {
+            wifi_cb_func(SYS_WINCS_WIFI_CONN_STATE_CONNECTING, (SYS_WINCS_WIFI_HANDLE_t) assocHandle);
             break;
         }
 
         /* Association state is connected. */
         case WDRV_WINC_CONN_STATE_CONNECTED:
         {
-            wifi_cb_func(SYS_WINCS_CONNECTED, NULL);
+            wifi_cb_func(SYS_WINCS_WIFI_CONNECTED, (SYS_WINCS_WIFI_HANDLE_t) assocHandle);
             break;
         }
 
         /* Association state is connection failed. */
         case WDRV_WINC_CONN_STATE_FAILED:
         {
-            wifi_cb_func(SYS_WINCS_WIFI_FAILED, NULL);
+            wifi_cb_func(SYS_WINCS_WIFI_CONNECT_FAILED, (SYS_WINCS_WIFI_HANDLE_t) assocHandle);
             break;
         }
 
         /* Association state is roamed. */
         case WDRV_WINC_CONN_STATE_ROAMED:
         {
+            wifi_cb_func(SYS_WINCS_WIFI_CONN_STATE_ROAMED,(SYS_WINCS_WIFI_HANDLE_t) assocHandle);
             break;
         }
     }
 }
 
+
+// *****************************************************************************
+// DHCP Event Callback
+//
+// Summary:
+//    Callback function for DHCP events.
+//
+// Description:
+//    This function is called to notify the application of DHCP events related to
+//    the WINC module. It provides information about the type of DHCP event and
+//    any associated event data.
+//
+// Parameters:
+//    handle - The handle to the WINC driver instance
+//    ifIdx - The index of the network interface on which the event occurred
+//    eventType - The type of DHCP event, represented by ::WDRV_WINC_NETIF_EVENT_TYPE
+//    pEventInfo - A pointer to a structure containing information about the event
+//
+// Returns:
+//    None.
+//
+// Remarks:
+//    This function is typically registered with the WINC driver to handle DHCP events.
+// *****************************************************************************
 
 static void SYS_WINCS_WIFI_DhcpEventCallback
 (
@@ -235,7 +350,7 @@ static void SYS_WINCS_WIFI_DhcpEventCallback
                 {
                     char s[20];
                     WDRV_WINC_UtilsIPAddressToString(&pAddrUpdateInfo->addr.v4, s, sizeof(s));
-                    wifi_cb_func(SYS_WINCS_DHCP_DONE,(uint8_t*) s);
+                    wifi_cb_func(SYS_WINCS_WIFI_DHCP_IPV4_COMPLETE,(uint8_t*) s);
                 }
                 else if (WDRV_WINC_IP_ADDRESS_TYPE_IPV6 == pAddrUpdateInfo->type)
                 {
@@ -243,20 +358,23 @@ static void SYS_WINCS_WIFI_DhcpEventCallback
                     WDRV_WINC_UtilsIPv6AddressToString(&pAddrUpdateInfo->addr.v6, s, sizeof(s));
                     if(strstr(s,"fe80"))
                     {
-                        wifi_cb_func(SYS_WINCS_DHCP_IPV6_LOCAL_DONE,(uint8_t*) s);
+                        wifi_cb_func(SYS_WINCS_WIFI_DHCP_IPV6_LOCAL_COMPLETE,(uint8_t*) s);
                     }
                     else
                     {
-                        wifi_cb_func(SYS_WINCS_DHCP_IPV6_GLOBAL_DONE,(uint8_t*) s);
+                        wifi_cb_func(SYS_WINCS_WIFI_DHCP_IPV6_GLOBAL_COMPLETE,(uint8_t*) s);
                     }
                 }
             }
             break;
         }
 
+         /* Network interface up. */
         case WDRV_WINC_NETIF_EVENT_INTF_UP:
         {
-            SYS_WINCS_WIFI_DBG_MSG("WDRV_WINC_NETIF_EVENT_INTF_UP \r\n" );
+            #ifdef SYS_WINCS_WIFI_DEBUG_LOGS
+            SYS_WINCS_WIFI_DBG_MSG(" Network interface up. \r\n" );
+            #endif
             break;
         }
         
@@ -268,6 +386,30 @@ static void SYS_WINCS_WIFI_DhcpEventCallback
 }
 
 
+// *****************************************************************************
+// DNS Resolve Callback
+//
+// Summary:
+//    Callback function for DNS resolution events.
+//
+// Description:
+//    This function is called to notify the application of the result of a DNS
+//    resolution request. It provides information about the status of the DNS
+//    resolution, the type of DNS record, the domain name, and the resolved IP address.
+//
+// Parameters:
+//    handle - The handle to the WINC driver instance
+//    status - The status of the DNS resolution, represented by ::WDRV_WINC_DNS_STATUS_TYPE
+//    recordType - The type of DNS record (e.g., A, AAAA)
+//    pDomainName - A pointer to the domain name that was resolved
+//    pIPAddr - A pointer to a structure containing the resolved IP address
+//
+// Returns:
+//    None.
+//
+// Remarks:
+//    This function is typically registered with the WINC driver to handle DNS resolution events.
+// *****************************************************************************
 
 static void SYS_WINCS_WIFI_ResolveCallback
 (
@@ -278,8 +420,7 @@ static void SYS_WINCS_WIFI_ResolveCallback
     WDRV_WINC_IP_MULTI_TYPE_ADDRESS *pIPAddr
 )
 {
-    
-    char addrStr[64];
+    char addrStr[64] = {""};
     if ((WDRV_WINC_DNS_STATUS_OK != status) || (NULL == pIPAddr))
     {
         SYS_WINCS_WIFI_DBG_MSG("DNS resolve failed (%d)\r\n", status);
@@ -299,12 +440,32 @@ static void SYS_WINCS_WIFI_ResolveCallback
         SYS_WINCS_WIFI_DBG_MSG("DNS resolve type error (%d)\r\n", pIPAddr->type);
     }
 
-    SYS_WINCS_WIFI_DBG_MSG("Domain Name: '%s' : (%d) -> %s\n", pDomainName, pIPAddr->type, addrStr);
     SYS_WINCS_WIFI_CALLBACK_t wifi_cb_func = g_wifiCallBackHandler[1];
-    wifi_cb_func(SYS_WINCS_DNS_RESOLVED, (void *)addrStr);
-
+    wifi_cb_func(SYS_WINCS_WIFI_DNS_RESOLVED, (void *)addrStr);
 }
 
+// *****************************************************************************
+// System Time Get Current Callback
+//
+// Summary:
+//    Callback function for retrieving the current system time.
+//
+// Description:
+//    This function is called to notify the application of the current system time
+//    in UTC format. It provides the current time as a 32-bit unsigned integer
+//    representing the number of seconds since the Unix epoch (January 1, 1970).
+//
+// Parameters:
+//    handle - The handle to the WINC driver instance
+//    timeUTC - The current system time in UTC, represented as a 32-bit unsigned integer
+//
+// Returns:
+//    None.
+//
+// Remarks:
+//    This function is typically registered with the WINC driver to handle system
+//    time retrieval events.
+// *****************************************************************************
 
 static void SYS_WINCS_SYSTEM_TimeGetCurrentCallback
 (
@@ -321,14 +482,15 @@ static void SYS_WINCS_SYSTEM_TimeGetCurrentCallback
     {
         if ((ptm->tm_year+1900) > 2000)
         {
+            #ifdef SYS_WINCS_WIFI_DEBUG_LOGS
             SYS_WINCS_WIFI_DBG_MSG("Time UTC : %d\r\n",timeUTC);
             SYS_WINCS_WIFI_DBG_MSG("Time: %02d:%02d:%02d of %02d/%02d/%02d\r\n",
                     ptm->tm_hour, ptm->tm_min, ptm->tm_sec,
                     ptm->tm_mday, ptm->tm_mon+1, ptm->tm_year+1900);
-            
+            #endif
             
             SYS_WINCS_WIFI_CALLBACK_t wifi_cb_func = g_wifiCallBackHandler[1];
-            wifi_cb_func(SYS_WINCS_SNTP_UP, (void *)&timeUTC);
+            wifi_cb_func(SYS_WINCS_WIFI_SNTP_UP, (void *)&timeUTC);
             
             print = false;
         }
@@ -337,19 +499,47 @@ static void SYS_WINCS_SYSTEM_TimeGetCurrentCallback
 
 
 <#if SYS_RNWF_PING == true>  
+// *****************************************************************************
+// Wi-Fi Ping Callback
+//
+// Summary:
+//    Callback function for handling the result of a ping operation.
+//
+// Description:
+//    This function is called when a ping operation completes. It processes the
+//    result of the ping, including the round-trip time (RTT) and the IP address
+//    of the target.
+//
+// Parameters:
+//    handle - The handle to the driver instance
+//    pIPAddr - Pointer to the IP address structure of the target
+//    ipAddrType - The type of the IP address (IPv4 or IPv6)
+//    rtt - The round-trip time of the ping in milliseconds
+//
+// Returns:
+//    None.
+//
+// Remarks:
+//    This function is typically used as a callback to handle the results of
+//    asynchronous ping operations initiated by the WINC module.
+// *****************************************************************************
 static void SYS_WINCS_WIFI_PingCallback
 (
     DRV_HANDLE handle, 
-    WDRV_WINC_IP_MULTI_ADDRESS *pIPAddr, 
+    const WDRV_WINC_IP_MULTI_ADDRESS *const pIPAddr, 
     WDRV_WINC_IP_ADDRESS_TYPE ipAddrType, 
     uint16_t rtt
 )
 {
     char addrStr[64];
 
+	SYS_WINCS_WIFI_CALLBACK_t wifi_cb_func = g_wifiCallBackHandler[1];
     if ((NULL == pIPAddr) || (WDRV_WINC_IP_ADDRESS_TYPE_ANY == ipAddrType))
     {
+		#ifdef SYS_WINCS_WIFI_DEBUG_LOGS
         SYS_WINCS_WIFI_DBG_MSG("Echo Response failed\r\n");
+		#endif
+		wifi_cb_func(SYS_WINCS_WIFI_ERROR, NULL);
         return;
     }
 
@@ -362,9 +552,39 @@ static void SYS_WINCS_WIFI_PingCallback
         inet_ntop(AF_INET6, pIPAddr, addrStr, sizeof(addrStr));
     }
 
+	#ifdef SYS_WINCS_WIFI_DEBUG_LOGS
     SYS_WINCS_WIFI_DBG_MSG("Echo Response received from %s\r\n", addrStr);
+	#endif
+	wifi_cb_func(SYS_WINCS_PING_ECHO_RSP_RCVD, (void *)addrStr);
 }
 </#if>
+
+// *****************************************************************************
+// Get Regulatory Domain Callback
+//
+// Summary:
+//    Callback function for retrieving regulatory domain information.
+//
+// Description:
+//    This function is called to notify the application of the regulatory domain
+//    information for the WINC module. It provides details about the current
+//    regulatory domain and other available domains.
+//
+// Parameters:
+//    handle - The handle to the WINC driver instance
+//    index - The index of the current regulatory domain information being provided
+//    ofTotal - The total number of regulatory domains available
+//    isCurrent - A boolean indicating if the provided regulatory domain is the current one
+//    pRegDomInfo - A pointer to a structure containing the regulatory domain information
+//
+// Returns:
+//    None.
+//
+// Remarks:
+//    This function is typically registered with the WINC driver to handle regulatory
+//    domain information retrieval events.
+// *****************************************************************************
+
 
 static void SYS_WINCS_WIFI_getRegDomainCallback
 (
@@ -383,7 +603,7 @@ static void SYS_WINCS_WIFI_getRegDomainCallback
         }
         else
         {
-            SYS_WINCS_WIFI_DBG_MSG( "WIFI ERROR : GET_REG_DOMAIN\r\n");
+            SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_INVALID_ARG, __FUNCTION__, __LINE__);
         }
     }
     else if (NULL != pRegDomInfo)
@@ -392,7 +612,8 @@ static void SYS_WINCS_WIFI_getRegDomainCallback
         {
             SYS_WINCS_WIFI_DBG_MSG("#.   CC      Channels Ver Status\r\n");
         }
-        SYS_WINCS_WIFI_DBG_MSG("%02d: [%-6s] 0x%0-6x %d.%d %s\r\n", index, pRegDomInfo->regDomain, 0, 0, 0, isCurrent ? "Active" : "");
+        SYS_WINCS_WIFI_DBG_MSG("%02d: [%-6s] 0x%0-6x %d.%d %s\r\n", 
+            index, pRegDomInfo->regDomain, 0, 0, 0, isCurrent ? "Active" : "");
         if (index == ofTotal)
         {
             SYS_WINCS_WIFI_DBG_MSG("DONE \r\n");
@@ -400,10 +621,35 @@ static void SYS_WINCS_WIFI_getRegDomainCallback
     }
     else
     {
-        SYS_WINCS_WIFI_DBG_MSG( "WIFI ERROR : GET_REG_DOMAIN");
+        SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_INVALID_ARG, __FUNCTION__, __LINE__);
     }
 }
 
+// *****************************************************************************
+// Set Regulatory Domain Callback
+//
+// Summary:
+//    Callback function for setting regulatory domain information.
+//
+// Description:
+//    This function is called to notify the application of the result of setting
+//    the regulatory domain for the WINC module. It provides details about the
+//    regulatory domain that was set and whether it is the current one.
+//
+// Parameters:
+//    handle - The handle to the WINC driver instance
+//    index - The index of the regulatory domain information being provided
+//    ofTotal - The total number of regulatory domains available
+//    isCurrent - A boolean indicating if the provided regulatory domain is the current one
+//    pRegDomInfo - A pointer to a structure containing the regulatory domain information
+//
+// Returns:
+//    None.
+//
+// Remarks:
+//    This function is typically registered with the WINC driver to handle regulatory
+//    domain setting events.
+// *****************************************************************************
 
 static void SYS_WINCS_WIFI_setRegDomainCallback
 (
@@ -414,20 +660,49 @@ static void SYS_WINCS_WIFI_setRegDomainCallback
     const WDRV_WINC_REGDOMAIN_INFO *const pRegDomInfo
 )
 {
-    if ((1 != index) || (1 != ofTotal) || (false == isCurrent) || (NULL == pRegDomInfo) || (0 == pRegDomInfo->regDomainLen))
+    SYS_WINCS_WIFI_CALLBACK_t wifi_cb_func = g_wifiCallBackHandler[1];
+    
+    if ((1 != index) || (1 != ofTotal) || (false == isCurrent) || 
+        (NULL == pRegDomInfo) || (0 == pRegDomInfo->regDomainLen))
     {
-        SYS_WINCS_WIFI_DBG_MSG("WIFI ERROR : SET_REG_DOMAIN");
+        wifi_cb_func(SYS_WINCS_WIFI_ERROR, NULL);
     }
     else
     {
-        SYS_WINCS_WIFI_DBG_MSG("WIFI : SET_REG_DOMAIN SUCCESS");
+        wifi_cb_func(SYS_WINCS_WIFI_REG_DOMAIN_SET_ACK, NULL);
     }
 }
 
-/* Get WINCS Status */
+// *****************************************************************************
+// Get WINC Status
+//
+// Summary:
+//    Function to retrieve and log the status of the WINC module.
+//
+// Description:
+//    This function is called to retrieve the current status of the WINC module
+//    and log it along with the function name and line number where the status
+//    was checked. It returns a result indicating the success or failure of the
+//    status retrieval.
+//
+// Parameters:
+//    status - The current status of the WINC module, represented by WDRV_WINC_STATUS
+//    functionName - A string containing the name of the function where the status was checked
+//    lineNo - The line number in the source code where the status was checked
+//
+// Returns:
+//    SYS_WINCS_RESULT_t - A result indicating the success or failure of the status retrieval.
+//
+// Remarks:
+//    This function can be used for debugging and logging purposes to track the
+//    status of the WINC module throughout the application.
+// *****************************************************************************
+
 SYS_WINCS_RESULT_t SYS_WINCS_WIFI_GetWincsStatus
 (
-    WDRV_WINC_STATUS status
+    WDRV_WINC_STATUS status,
+    const char *functionName,
+    int lineNo
 )
 {
     if( WDRV_WINC_STATUS_OK == status)
@@ -440,55 +715,91 @@ SYS_WINCS_RESULT_t SYS_WINCS_WIFI_GetWincsStatus
     }
     else
     {
-        SYS_WINCS_WIFI_DBG_MSG("[ERROR] : Error in WINCS Service \r\n");
-        return SYS_WINCS_FAIL;
+        SYS_CONSOLE_PRINT("ERROR!!! : Function %s, Line No : %d, Status : %d\r\n",
+                functionName, lineNo, status);
     }
+    return SYS_WINCS_FAIL;
 }
 
-/* Set Authentication type*/
+// *****************************************************************************
+// Set Authentication Personal Type
+//
+// Summary:
+//    Function to set the authentication type for a personal Wi-Fi network.
+//
+// Description:
+//    This function sets the authentication type for a personal Wi-Fi network
+//    in the provided Wi-Fi configuration structure. It updates the configuration
+//    with the specified authentication type.
+//
+// Parameters:
+//    wifi_config - A pointer to the Wi-Fi configuration structure to be updated
+//    authType - The authentication type to be set, represented by WDRV_WINC_AUTH_TYPE
+//
+// Returns:
+//    WDRV_WINC_STATUS - The status of the operation, indicating success or failure.
+//
+// Remarks:
+//    This function is used to configure the authentication type for personal
+//    Wi-Fi networks such as WPA2-Personal.
+// *****************************************************************************
+
 static WDRV_WINC_STATUS SYS_WINCS_WIFI_SetAuthPersonalType
 (
     SYS_WINCS_WIFI_PARAM_t *wifi_config,
     WDRV_WINC_AUTH_TYPE authType
 )
 {
-    return WDRV_WINC_AuthCtxSetPersonal(&authContext, (uint8_t*)wifi_config ->passphrase 
+    return WDRV_WINC_AuthCtxSetPersonal(&g_authContext, (uint8_t*)wifi_config ->passphrase 
                             , strlen(wifi_config ->passphrase), authType);
 }
 
 
-/* Set Wifi Params */
+// *****************************************************************************
+// Set Wi-Fi Parameters
+//
+// Summary:
+//    Function to set the Wi-Fi parameters for the WINC module.
+//
+// Description:
+//    This function sets the Wi-Fi parameters in the provided Wi-Fi configuration
+//    structure. It updates the configuration with the specified parameters and
+//    applies them to the WINC module.
+//
+// Parameters:
+//    wifi_config - A pointer to the Wi-Fi configuration structure to be updated
+//
+// Returns:
+//    WDRV_WINC_STATUS - The status of the operation, indicating success or failure.
+//
+// Remarks:
+//    This function is used to configure various Wi-Fi parameters such as SSID,
+//    authentication type, and other settings for the WINC module.
+// *****************************************************************************
+
 static WDRV_WINC_STATUS SYS_WINCS_WIFI_SetWifiParams
 (
     SYS_WINCS_WIFI_PARAM_t *wifi_config
 )
 {
     WDRV_WINC_STATUS status = WDRV_WINC_STATUS_NOT_CONNECTED;
-    uint8_t ssidLength;
-    WDRV_WINC_CHANNEL_ID channel;
+    uint8_t ssidLength;    
 
     ssidLength = strlen(wifi_config -> ssid);
-    channel = wifi_config->channel;
 
-    status = WDRV_WINC_BSSCtxSetDefaults(&bssContext);
+    status = WDRV_WINC_BSSCtxSetDefaults(&g_bssContext);
     if(status != WDRV_WINC_STATUS_OK)
     {
         return status;
     }
 
-    status = WDRV_WINC_AuthCtxSetDefaults(&authContext);
+    status = WDRV_WINC_AuthCtxSetDefaults(&g_authContext);
     if(status != WDRV_WINC_STATUS_OK)
     {
         return status;
     }
 
-    status =  WDRV_WINC_BSSCtxSetSSID(&bssContext, (uint8_t*)wifi_config -> ssid, ssidLength);
-    if(status != WDRV_WINC_STATUS_OK)
-    {
-        return status;
-    }
-                
-    status =  WDRV_WINC_BSSCtxSetChannel(&bssContext, channel);
+    status =  WDRV_WINC_BSSCtxSetSSID(&g_bssContext, (uint8_t*)wifi_config -> ssid, ssidLength);
     if(status != WDRV_WINC_STATUS_OK)
     {
         return status;
@@ -497,32 +808,31 @@ static WDRV_WINC_STATUS SYS_WINCS_WIFI_SetWifiParams
     /* Security Configuration*/
     switch (wifi_config -> security)
     {
-        case SYS_WINCS_OPEN:
+        case SYS_WINCS_WIFI_SECURITY_OPEN:
         {
             /* Initialize the authentication context for open mode. */
-            status =  WDRV_WINC_AuthCtxSetOpen(&authContext);
+            status =  WDRV_WINC_AuthCtxSetOpen(&g_authContext);
             break;
         }
-        case SYS_WINCS_WPA2:
+        case SYS_WINCS_WIFI_SECURITY_WPA2:
         {
             status =  SYS_WINCS_WIFI_SetAuthPersonalType(wifi_config, WDRV_WINC_AUTH_TYPE_WPA2_PERSONAL);
             break;
         }
 
-        case SYS_WINCS_WPA2_MIXED:
+        case SYS_WINCS_WIFI_SECURITY_WPA2_MIXED:
         {
             status =  SYS_WINCS_WIFI_SetAuthPersonalType(wifi_config, WDRV_WINC_AUTH_TYPE_WPAWPA2_PERSONAL);
             break;
         }
 
-        case SYS_WINCS_WPA2WPA3_PERSONAL:
+        case SYS_WINCS_WIFI_SECURITY_WPA3_TRANS:
         {
             status =  SYS_WINCS_WIFI_SetAuthPersonalType(wifi_config, WDRV_WINC_AUTH_TYPE_WPA2WPA3_PERSONAL);
-
             break;
         }
 
-        case SYS_WINCS_WPA3:
+        case SYS_WINCS_WIFI_SECURITY_WPA3:
         {
             status =  SYS_WINCS_WIFI_SetAuthPersonalType(wifi_config, WDRV_WINC_AUTH_TYPE_WPA3_PERSONAL);
             break;
@@ -530,35 +840,69 @@ static WDRV_WINC_STATUS SYS_WINCS_WIFI_SetWifiParams
 
         default:
         {
-            SYS_WINCS_WIFI_DBG_MSG("[ERROR_WIFI] : INVALID_PARAMETER for AUTHENTICATION\r\n");
+            SYS_WINCS_WIFI_DBG_MSG("[ERROR] : INVALID_PARAMETER for AUTHENTICATION\r\n");
             return status;
         }
     }
 
     if(wifi_config->mode == SYS_WINCS_WIFI_MODE_STA)
     {
-        if(wifi_config->autoconnect)
+        if(wifi_config->autoConnect)
         {
-            WDRV_WINC_NetIfRegisterEventCallback(wdrvHandle, SYS_WINCS_WIFI_DhcpEventCallback);
-            #ifdef SYS_WINCS_WIFI_DEBUG_LOGS_PRINT
+            WDRV_WINC_NetIfRegisterEventCallback(g_wdrvHandle, SYS_WINCS_WIFI_DhcpEventCallback);
+            #ifdef SYS_WINCS_WIFI_DEBUG_LOGS
             SYS_WINCS_WIFI_DBG_MSG("[WIFI] : Connecting to AP : %s\r\n",wifi_config->ssid);
             #endif
-            status = WDRV_WINC_BSSConnect(wdrvHandle, &bssContext, &authContext,SYS_WINCS_WIFI_ConnectNotifyCallback);
+            status = WDRV_WINC_BSSConnect(g_wdrvHandle, &g_bssContext, &g_authContext,
+                &g_wifiCfg,SYS_WINCS_WIFI_ConnectNotifyCallback);
         }
     }
     else if(wifi_config->mode == SYS_WINCS_WIFI_MODE_AP)                
     {        
-        status =  WDRV_WINC_BSSCtxSetSSIDVisibility(&bssContext, wifi_config ->ssidVisibility);
+        WDRV_WINC_CHANNEL_ID channel;
+        channel = wifi_config->channel;
+
+        status =  WDRV_WINC_BSSCtxSetChannel(&g_bssContext, channel);
+        if(status != WDRV_WINC_STATUS_OK)
+        {
+            return status;
+        }
+        WDRV_WINC_APDefaultWiFiCfg(&g_wifiCfg);
+        g_wifiCfg.ap.cloaked = wifi_config ->ssidVisibility;
     }
     
     return status;
 }
 
-/*Wi-Fi Service Control Function*/
+
+
+// *****************************************************************************
+// Wi-Fi Service Control
+//
+// Summary:
+//    Function to control Wi-Fi services for the WINC module.
+//
+// Description:
+//    This function handles various Wi-Fi service control requests for the WINC
+//    module. It processes the specified request and performs the corresponding
+//    action using the provided Wi-Fi handle.
+//
+// Parameters:
+//    request - The Wi-Fi service request to be processed, represented by SYS_WINCS_WIFI_SERVICE_t
+//    wifiHandle - The handle to the Wi-Fi service instance
+//
+// Returns:
+//    SYS_WINCS_RESULT_t - The result of the service control operation, indicating success or failure.
+//
+// Remarks:
+//    This function is used to manage different Wi-Fi services such as starting
+//    or stopping the Wi-Fi module, scanning for networks, and other control operations.
+// *****************************************************************************
+
 SYS_WINCS_RESULT_t SYS_WINCS_WIFI_SrvCtrl
 ( 
     SYS_WINCS_WIFI_SERVICE_t request, 
-    void *input
+    SYS_WINCS_WIFI_HANDLE_t wifiHandle
 )
 {
     WDRV_WINC_STATUS status = WDRV_WINC_STATUS_OK;
@@ -567,116 +911,122 @@ SYS_WINCS_RESULT_t SYS_WINCS_WIFI_SrvCtrl
     {
         case SYS_WINCS_WIFI_GET_DRV_STATUS:
         {
-            *(int8_t*)input = '\0';
-            *(int8_t*)input = WDRV_WINC_Status(sysObj.drvWifiWinc);
-            break;
-        }
-        
-        case SYS_WINCS_WIFI_GET_DRV_HANDLE:
-        {
-            *(DRV_HANDLE *)input = wdrvHandle;
-            break;
+            *(int8_t*)wifiHandle = '\0';
+            *(int8_t*)wifiHandle = WDRV_WINC_Status(sysObj.drvWifiWinc);
+            return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_OK, __FUNCTION__, __LINE__); 
         }
         
         case SYS_WINCS_WIFI_OPEN_DRIVER:
         {
-            if (DRV_HANDLE_INVALID == wdrvHandle)
+            if (DRV_HANDLE_INVALID == g_wdrvHandle)
             {
-                wdrvHandle = WDRV_WINC_Open(0, 0);
-                if (DRV_HANDLE_INVALID == wdrvHandle)
+                g_wdrvHandle = WDRV_WINC_Open(0, 0);
+                if (DRV_HANDLE_INVALID == g_wdrvHandle)
                 {
-                    SYS_WINCS_WIFI_DBG_MSG("ERROR : DRV_HANDLE_INVALID\r\n");
-                    status = WDRV_WINC_STATUS_NOT_OPEN;
-                    break;
+                    SYS_WINCS_WIFI_DBG_MSG("ERROR : Driver Handle Invalid\r\n");
+                    return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
                 }
             }
-            *(DRV_HANDLE *)input = wdrvHandle;
-            break;
+            *(DRV_HANDLE *)wifiHandle = g_wdrvHandle;
+            return SYS_WINCS_PASS;
+        }
+        
+        case SYS_WINCS_WIFI_GET_DRV_HANDLE:
+        {
+            *(DRV_HANDLE *)wifiHandle = g_wdrvHandle;
+            return SYS_WINCS_PASS;
         }
         
         /* WINCS Get Time */
         case SYS_WINCS_WIFI_GET_TIME:
         {
-            status = WDRV_WINC_SystemTimeGetCurrent(wdrvHandle, SYS_WINCS_SYSTEM_TimeGetCurrentCallback);
-            break;
+            status = WDRV_WINC_SystemTimeGetCurrent(g_wdrvHandle, SYS_WINCS_SYSTEM_TimeGetCurrentCallback);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
         
         /* WINCS Set SNTP */
         case SYS_WINCS_WIFI_SET_SNTP:
         {            
-            status =  WDRV_WINC_SNTPServerAddressSet(wdrvHandle, (char *)input);
+            status =  WDRV_WINC_SNTPServerAddressSet(g_wdrvHandle, (char *)wifiHandle);
             if (WDRV_WINC_STATUS_OK != status )
             {
-                break;
+                return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
             }
-            status =   WDRV_WINC_SNTPStaticSet(wdrvHandle, true);
+            
+            status =   WDRV_WINC_SNTPStaticSet(g_wdrvHandle, true);
             if (WDRV_WINC_STATUS_OK != status )
             {
-                break;
+                return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
             }
-            status =  WDRV_WINC_SNTPEnableSet(wdrvHandle, true);
-            break;
+            
+            status =  WDRV_WINC_SNTPEnableSet(g_wdrvHandle, true);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
+
  <#if SYS_RNWF_WIFI_BT_COEXIST == true>         
         case SYS_WINCS_WIFI_BT_COEX_CONFG:
         {
-            WDRV_WINC_COEX_CFG *coExCfg = (WDRV_WINC_COEX_CFG *)input;
-            status = WDRV_WINC_WifiCoexConfSet(wdrvHandle, coExCfg);
-            break;
+            SYS_WINCS_WIFI_COEX_CFG_t *coExCfg = (SYS_WINCS_WIFI_COEX_CFG_t *)wifiHandle;
+            status = WDRV_WINC_WifiCoexConfSet(wdrvHandle,(WDRV_WINC_COEX_CFG *) coExCfg);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
         
         case SYS_WINCS_WIFI_BT_COEX_ENABLE:
         {
-            bool enableCoexArbiter = *(bool *)input;
+            bool enableCoexArbiter = *(bool *)wifiHandle;
             status = WDRV_WINC_WifiCoexEnableSet(wdrvHandle, enableCoexArbiter);
-            break;
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
- </#if>       
+ </#if>     
+
         /**<Request/Trigger Wi-Fi connect */
         case SYS_WINCS_WIFI_STA_CONNECT:
         {
-            status = WDRV_WINC_NetIfRegisterEventCallback(wdrvHandle, SYS_WINCS_WIFI_DhcpEventCallback);
+            status = WDRV_WINC_NetIfRegisterEventCallback(g_wdrvHandle, SYS_WINCS_WIFI_DhcpEventCallback);
             if(status != WDRV_WINC_STATUS_OK)
             {
-                break;
+                return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
             }
-            status = WDRV_WINC_BSSConnect(wdrvHandle, &bssContext, &authContext,SYS_WINCS_WIFI_ConnectNotifyCallback);
-            break;
+            status = WDRV_WINC_BSSConnect(g_wdrvHandle, &g_bssContext, &g_authContext,
+                    &g_wifiCfg,SYS_WINCS_WIFI_ConnectNotifyCallback);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
 
          /**<Request/Trigger Wi-Fi disconnect */    
         case SYS_WINCS_WIFI_STA_DISCONNECT:
         {
-            status = WDRV_WINC_BSSDisconnect(wdrvHandle);
-            break;
+            status = WDRV_WINC_BSSDisconnect(g_wdrvHandle);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
 
         /**<Request/Trigger SoftAP disable */       
         case SYS_WINCS_WIFI_AP_DISABLE:
         {
-            status = WDRV_WINC_APStop(wdrvHandle);
+            status = WDRV_WINC_APStop(g_wdrvHandle);
             if(status != WDRV_WINC_STATUS_OK)
             {
-                break;
+                return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
             }
 
-            status =  WDRV_WINC_DHCPSEnableSet(wdrvHandle, WDRV_WINC_DHCPS_IDX_0, false, NULL);
-            break;
+            status =  WDRV_WINC_DHCPSEnableSet(g_wdrvHandle, WDRV_WINC_DHCPS_IDX_0, false, NULL);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
  <#if SYS_RNWF_PING == true>        
         case SYS_WINCS_WIFI_PING:
         {
-            char *addr = (char *)input;
+            char *addr = (char *)wifiHandle;
             WDRV_WINC_IP_MULTI_ADDRESS ipAddr;
             if(1 == inet_pton(AF_INET, addr , &ipAddr.v4.Val))
             {
-                WDRV_WINC_ICMPEchoRequestAddr(wdrvHandle, &ipAddr, WDRV_WINC_IP_ADDRESS_TYPE_IPV4, SYS_WINCS_WIFI_PingCallback);
+                status =  WDRV_WINC_ICMPEchoRequestAddr(wdrvHandle, &ipAddr, 
+                    WDRV_WINC_IP_ADDRESS_TYPE_IPV4, SYS_WINCS_WIFI_PingCallback);
             }
             else if(1 == inet_pton(AF_INET6, addr , &ipAddr.v6.v))
             {
-                 WDRV_WINC_ICMPEchoRequestAddr(wdrvHandle, &ipAddr, WDRV_WINC_IP_ADDRESS_TYPE_IPV6, SYS_WINCS_WIFI_PingCallback);
+                 status =  WDRV_WINC_ICMPEchoRequestAddr(wdrvHandle, &ipAddr, 
+                    WDRV_WINC_IP_ADDRESS_TYPE_IPV6, SYS_WINCS_WIFI_PingCallback);
             }
-            break;
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
             
         }
 </#if>
@@ -684,83 +1034,93 @@ SYS_WINCS_RESULT_t SYS_WINCS_WIFI_SrvCtrl
          /**<Configure the Wi-Fi channel */    
         case SYS_WINCS_WIFI_SET_CHANNEL_AP:
         {      
-            uint8_t channel = *(uint8_t *)input;
-            status =  WDRV_WINC_BSSCtxSetChannel(&bssContext, channel);
-            break;            
+            uint8_t channel = *(uint8_t *)wifiHandle;
+            status =  WDRV_WINC_BSSCtxSetChannel(&g_bssContext, channel);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);            
         }   
         
         /**<Configure the Access point's BSSID */ 
         case SYS_WINCS_WIFI_SET_BSSID:
         {  
-            uint8_t *newBssid = (uint8_t *)input;
-            WDRV_WINC_BSSCtxSetBSSID(&bssContext, newBssid);
-            break;
+            uint8_t *newBssid = (uint8_t *)wifiHandle;
+            WDRV_WINC_BSSCtxSetBSSID(&g_bssContext, newBssid);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         } 
         
         /**<Configure Hidden mode SSID in SoftAP mode*/     
         case SYS_WINCS_WIFI_SET_HIDDEN:
-        {        
-            status =  WDRV_WINC_BSSCtxSetSSIDVisibility(&bssContext, false);
-            break;
+        {     
+            g_wifiCfg.ap.cloaked = (bool)wifiHandle;
+            status =  WDRV_WINC_STATUS_OK;
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }  
 
         /**<Configure the Wi-Fi parameters */ 
         case SYS_WINCS_WIFI_SET_PARAMS:  
         {
-             status = SYS_WINCS_WIFI_SetWifiParams((SYS_WINCS_WIFI_PARAM_t *)input);
-            break;            
+            status = SYS_WINCS_WIFI_SetWifiParams((SYS_WINCS_WIFI_PARAM_t *)wifiHandle);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);           
         }
         
         case SYS_WINCS_WIFI_AP_ENABLE:
         {
-            status = WDRV_WINC_APStart(wdrvHandle, &bssContext, &authContext
-                    , SYS_WINCS_WIFI_ApNotifyCallback);
-            break;
+            status = WDRV_WINC_APStart(g_wdrvHandle, &g_bssContext, &g_authContext
+                    ,&g_wifiCfg, SYS_WINCS_WIFI_ApNotifyCallback);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
 
         /**<Request/Trigger Wi-Fi passive scan */ 
         case SYS_WINCS_WIFI_PASSIVE_SCAN:
         {
-            SYS_WIFI_WINC_SCAN_PARAM_t *scanParams = (SYS_WIFI_WINC_SCAN_PARAM_t *)input;
+            SYS_WINCS_WIFI_SCAN_PARAM_t *scanParams = (SYS_WINCS_WIFI_SCAN_PARAM_t *)wifiHandle;
             
-            status = WDRV_WINC_BSSFindSetScanParameters(wdrvHandle, 0, 0, scanParams->scanTime, 0);
+            status = WDRV_WINC_BSSFindSetScanParameters(g_wdrvHandle, 0, 0, scanParams->scanTime, 0);
             if(status != WDRV_WINC_STATUS_OK)
             {
-                break;
+                return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
             }
 
-            status =  WDRV_WINC_BSSFindFirst(wdrvHandle, scanParams->channel, false, NULL, SYS_WINCS_WIFI_BssFindNotifyCallback);
-            break;
+            status =  WDRV_WINC_BSSFindFirst(g_wdrvHandle, scanParams->channel, 
+                false, NULL, SYS_WINCS_WIFI_BssFindNotifyCallback);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
 
         /**<Request/Trigger Wi-Fi active scan */    
         case SYS_WINCS_WIFI_ACTIVE_SCAN:
         {
-            SYS_WIFI_WINC_SCAN_PARAM_t *scanParams = (SYS_WIFI_WINC_SCAN_PARAM_t *)input;
+            SYS_WINCS_WIFI_SCAN_PARAM_t *scanParams = (SYS_WINCS_WIFI_SCAN_PARAM_t *)wifiHandle;
             
-            OSAL_SEM_Create(&bssFindResult, OSAL_SEM_TYPE_COUNTING, 255, 0);
-            status =  WDRV_WINC_BSSFindFirst(wdrvHandle, scanParams->channel, true, NULL, SYS_WINCS_WIFI_BssFindNotifyCallback);
-            break;
+            OSAL_SEM_Create(&g_bssFindResult, OSAL_SEM_TYPE_COUNTING, 255, 0);
+            status =  WDRV_WINC_BSSFindFirst(g_wdrvHandle,(WDRV_WINC_CHANNEL_ID ) scanParams->channel,
+                 true, NULL, SYS_WINCS_WIFI_BssFindNotifyCallback);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
         
         case SYS_WINCS_WIFI_SET_REG_DOMAIN:
         {
-            uint8_t *regDomainName = (uint8_t *)input;
-            status = WDRV_WINC_WifiRegDomainSet(wdrvHandle,regDomainName, strlen((const char *)regDomainName),SYS_WINCS_WIFI_setRegDomainCallback );
-            break;
+            uint8_t *regDomainName = (uint8_t *)wifiHandle;
+            if (regDomainName == NULL)
+            {
+                return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_INVALID_ARG, __FUNCTION__, __LINE__);
+            }
+            
+            status = WDRV_WINC_WifiRegDomainSet(g_wdrvHandle,regDomainName, 
+                strlen((const char *)regDomainName),SYS_WINCS_WIFI_setRegDomainCallback );
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
         
         case SYS_WINCS_WIFI_GET_REG_DOMAIN:
         {
-            status = WDRV_WINC_WifiRegDomainGet(wdrvHandle, WDRV_WINC_REGDOMAIN_SELECT_ALL, SYS_WINCS_WIFI_getRegDomainCallback );
-            break;
+            status = WDRV_WINC_WifiRegDomainGet(g_wdrvHandle, WDRV_WINC_REGDOMAIN_SELECT_ALL,
+                 SYS_WINCS_WIFI_getRegDomainCallback );
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
         
  <#if SYS_RNWF_POWER_SAVE_MODE == true>        
         /* Powersave WSM mode : Wireless sleep mode. */
         case SYS_WINCS_WIFI_ENABLE_POWERSAVE_MODE:
         {
-            bool powerSave = *(bool *)input;
+            bool powerSave = *(bool *)wifiHandle;
             if(powerSave == true)
             {
                 status = WDRV_WINC_WifiPowerSaveModeSet(wdrvHandle, WDRV_WINC_POWERSAVE_WSM_MODE);
@@ -769,7 +1129,7 @@ SYS_WINCS_RESULT_t SYS_WINCS_WIFI_SrvCtrl
             {
                 status = WDRV_WINC_WifiPowerSaveModeSet(wdrvHandle, WDRV_WINC_POWERSAVE_RUN_MODE);
             }
-            break;
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
        
 </#if>
@@ -777,45 +1137,44 @@ SYS_WINCS_RESULT_t SYS_WINCS_WIFI_SrvCtrl
         /**<Regester the call back for async events */    
         case SYS_WINCS_WIFI_SET_CALLBACK:  
         {
-            g_wifiCallBackHandler[1] = (SYS_WINCS_WIFI_CALLBACK_t)input;
-            break;
+            g_wifiCallBackHandler[1] = (SYS_WINCS_WIFI_CALLBACK_t)wifiHandle;
+            return SYS_WINCS_PASS;
         }
 
         /**<Regester the call back for async events */
         case SYS_WINCS_WIFI_SET_SRVC_CALLBACK:                        
         {
-            g_wifiCallBackHandler[0] = (SYS_WINCS_WIFI_CALLBACK_t)input;  
-            break;
+            g_wifiCallBackHandler[0] = (SYS_WINCS_WIFI_CALLBACK_t)wifiHandle;  
+            return SYS_WINCS_PASS;
         }
         
         case SYS_WINCS_WIFI_DNS_RESOLVE:
         {
-            char *domainName = (char *)input;
+            char *domainName = (char *)wifiHandle;
             uint16_t timeoutMs = 100;
-            status = WDRV_WINC_DNSResolveDomain(wdrvHandle, WINC_CONST_DNS_TYPE_A,
+            status = WDRV_WINC_DNSResolveDomain(g_wdrvHandle, WINC_CONST_DNS_TYPE_A,
                     domainName, timeoutMs, SYS_WINCS_WIFI_ResolveCallback);
-            break;
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
         
         case SYS_WINCS_WIFI_GET_CALLBACK:
         {
             SYS_WINCS_WIFI_CALLBACK_t *callBackHandler;
-            callBackHandler = (SYS_WINCS_WIFI_CALLBACK_t *)input;
+            callBackHandler = (SYS_WINCS_WIFI_CALLBACK_t *)wifiHandle;
             
             callBackHandler[0] = g_wifiCallBackHandler[0];
             callBackHandler[1] = g_wifiCallBackHandler[1];
-            break;
+            return SYS_WINCS_PASS;
         }
         
         default:
         {
-            status = WDRV_WINC_STATUS_OPERATION_NOT_SUPPORTED;
-            break;
+            SYS_WINCS_WIFI_DBG_MSG("ERROR : Unknown Wifi Service Request\r\n");
         }
     }  
     
     
-    return SYS_WINCS_WIFI_GetWincsStatus(status);
+    return SYS_WINCS_FAIL;
 }
 
 

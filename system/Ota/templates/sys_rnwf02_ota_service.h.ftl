@@ -56,12 +56,6 @@ Copyright (C) 2020 released Microchip Technology Inc.  All rights reserved.
 /* Maximum length of ota buffer */
 #define SYS_RNWF_OTA_BUF_LEN_MAX             4096
 
-/* Ota configuration tunnel */
-#define SYS_RNWF_OTA_CONF_TUNNEL             ${SYS_RNWF_OTA_TUNNEL}
-
-/* Ota configuration port */
-#define SYS_RNWF_OTA_CONF_PORT               ${SYS_RNWF_OTA_TUNNEL_PORT}
-
 /* Ota Configuration Firmware header */
 #define SYS_RNWF_OTA_CONF_FW_HDR             "firmware:"
 
@@ -187,6 +181,9 @@ typedef enum
             
     /* OTA configuration parameter File */
     SYS_OTA_CFG_PARAM_FILE,
+    
+    /* OTA configuration parameter File */  
+    SYS_OTA_CFG_TLS_ENABLE,
             
     /* OTA configuration parameter Type */
     SYS_OTA_CFG_PARAM_TYPE,
@@ -195,6 +192,7 @@ typedef enum
     SYS_OTA_CFG_PARAM_MAX,
             
 }SYS_RNWF_OTA_CFG_PARAM_t;
+
 
 // *****************************************************************************
 

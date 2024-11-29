@@ -44,87 +44,126 @@ Copyright (C) 2020 released Microchip Technology Inc.  All rights reserved.
 #ifndef SYS_WINCS_PROVISION_SERVICE_H
 #define	SYS_WINCS_PROVISION_SERVICE_H
 
-#include "system/wifiprov/sys_wincs_provision_service.h"
+/* Handle for WiFi provisioning configurations */
+typedef void * SYS_WINCS_PROV_HANDLE_t;
 
-
+/* Macro for debug messages specific to provisioning */
 #define SYS_WINCS_PROV_DBG_MSG(args, ...)    SYS_CONSOLE_PRINT("[PROV]:"args, ##__VA_ARGS__)
 
+/* Buffer size for receiving data during provisioning */
 #define SYS_WINCS_PROV_RECV_BUFFER_SIZE    2048
 
-#define SYS_WINCS_PROVI_MOBILE_APP			1
+/* Define for mobile app provisioning mode */
+#define SYS_WINCS_PROVI_MOBILE_APP         1
 
-#define SYS_WINCS_PROV_RECV_BUF_SIZE    2048
+/* Another buffer size definition for receiving data */
+#define SYS_WINCS_PROV_RECV_BUF_SIZE       2048
 
-SYS_WINCS_RESULT_t SYS_WINCS_PROV_AppProcess(uint32_t, uint16_t rx_len);
+
+// *****************************************************************************
 /**
- @brief Wi-Fi Provision service List
- 
+ * @brief Wi-Fi Provision service list
+ *
+ * Enumeration of different provisioning service control requests.
  */
 typedef enum 
 {
-    /*WINCS provision service enable*/
+    /* Enable WINCS provisioning service */
     SYS_WINCS_PROV_ENABLE,                          
-    
-    /*WINCS provision service disable*/        
+
+    /* Disable WINCS provisioning service */        
     SYS_WINCS_PROV_DISABLE,
-            
-    /**<Set the Application callback for Provisioning Events*/
+
+    /* Set the application callback for provisioning events */
     SYS_WINCS_PROV_SET_CALLBACK,     
-            
-}SYS_WINCS_PROV_SERVICE_t;
+
+} SYS_WINCS_PROV_SERVICE_t;
 
 
+// *****************************************************************************
 /**
- @brief Provisioning events
+ * @brief Provisioning events
+ *
+ * Enumeration of different events that can occur during provisioning.
  */
 typedef enum 
 {
-    /**<Provisionging complete*/
-    SYS_WINCS_PROV_COMPLTE,        
-            
-    /**<Provisionging Failure*/   
+    /* Provisioning complete */
+    SYS_WINCS_PROV_COMPLETE,        
+
+    /* Provisioning failure */   
     SYS_WINCS_PROV_FAILURE, 
 
-}SYS_WINCS_PROV_EVENT_t;
+} SYS_WINCS_PROV_EVENT_t;
 
 
+// *****************************************************************************
 /**
- @brief Wi-Fi Provision modes
- 
+ * @brief Wi-Fi Provision modes
+ *
+ * Enumeration of different modes for Wi-Fi provisioning.
  */
 typedef enum 
 {
-    /**<Use the mobile app*/
+    /* Use the mobile app for provisioning */
     SYS_WINCS_PROV_MOBILE_APP,    
-            
-    /**<Use the web server*/        
+
+    /* Use the web server for provisioning */        
     SYS_WINCS_PROV_WEB_SERVER,
 
-}SYS_WINCS_PROV_MODE_t;
+} SYS_WINCS_PROV_MODE_t;
 
 
+// *****************************************************************************
 /**
- * @brief       Wi-Fi operation modes
- * 
+ * @brief Wi-Fi operation modes
+ *
+ * Structure to define Wi-Fi operation modes for provisioning.
  */
+
 typedef struct 
 {
-    SYS_WINCS_PROV_MODE_t mode;          /**<Wi-Fi operation mode ::SYS_WINCS_WIFI_MODE_t either STA or SoftAP */    
+    SYS_WINCS_PROV_MODE_t mode;  /**< Wi-Fi operation mode, either mobile app or web server */
 
-}SYS_WINCS_PROV_PARAM_t;
+} SYS_WINCS_PROV_PARAM_t;
 
+
+// *****************************************************************************
 /**
- * @brief       Wi-Fi callback function type
- * 
- * @param[out]  event One of the ::SYS_WINCS_WIFI_EVENT_t event   
- * @param[out]  msg Received data related to the passed event   
- * 
+ * @brief Wi-Fi callback function type
+ *
+ * Function pointer type for Wi-Fi provisioning callback functions.
+ *
+ * @param[out] event One of the ::SYS_WINCS_PROV_EVENT_t events
+ * @param[out] provHandle Handle associated with the provisioning event
  */
-typedef void (*SYS_WINCS_PROV_CALLBACK_t)(SYS_WINCS_PROV_EVENT_t event, uint8_t *msg);
+typedef void (*SYS_WINCS_PROV_CALLBACK_t)(SYS_WINCS_PROV_EVENT_t event, SYS_WINCS_PROV_HANDLE_t provHandle);
 
-/*Provision Callback service function*/
-SYS_WINCS_RESULT_t SYS_WINCS_PROV_SrvCtrl(SYS_WINCS_PROV_SERVICE_t request, void *input);
-   
+// *****************************************************************************
+/**
+ * @brief Provisioning service control function.
+ *
+ * This function handles various provisioning service control requests such as enabling,
+ * disabling, and setting callbacks for the provisioning service. It performs appropriate
+ * actions based on the request type.
+ *
+ * @param[in] request The type of provisioning service request. This is of type `SYS_WINCS_PROV_SERVICE_t`.
+ *                    Possible values are:
+ *                    - `SYS_WINCS_PROV_ENABLE`: Enable the provisioning service.
+ *                    - `SYS_WINCS_PROV_DISABLE`: Disable the provisioning service.
+ *                    - `SYS_WINCS_PROV_SET_CALLBACK`: Set the application callback for provisioning events.
+ * @param[in] provHandle The handle associated with the provisioning service request. This is of type `SYS_WINCS_PROV_HANDLE_t`.
+ *                       For `SYS_WINCS_PROV_SET_CALLBACK`, this should be a valid callback function pointer.
+ *
+ * @return The result of the service control operation. This is of type `SYS_WINCS_RESULT_t`.
+ *         Possible return values are:
+ *         - `SYS_WINCS_PASS`: The operation was successful.
+ *         - `SYS_WINCS_FAIL`: The operation failed.
+ */
+
+SYS_WINCS_RESULT_t SYS_WINCS_PROV_SrvCtrl(SYS_WINCS_PROV_SERVICE_t request, SYS_WINCS_PROV_HANDLE_t provHandle);
+
+
 
 #ifdef SYS_WINCS_PROVI_WEB_SERVER 
 /*faviconIco page*/

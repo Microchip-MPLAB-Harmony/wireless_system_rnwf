@@ -104,6 +104,7 @@ SYS_RNWF_RESULT_t SYS_RNWF_SYSTEM_SrvCtrl(SYS_RNWF_SYSTEM_SERVICE_t request, voi
             break;
         }
         
+<#if SYS_WINCS_CERT_PRINT == true >        
         /* RNWF Get Certificates List */
         case SYS_RNWF_SYSTEM_GET_CERT_LIST:
         {
@@ -119,7 +120,8 @@ SYS_RNWF_RESULT_t SYS_RNWF_SYSTEM_SrvCtrl(SYS_RNWF_SYSTEM_SERVICE_t request, voi
             result = SYS_RNWF_CMD_SEND_OK_WAIT("+FS:2,2,", input, SYS_RNWF_GET_KEY_LIST);
             break;
         }
-        
+</#if>
+
         /* RNWF Get Time */
         case SYS_RNWF_SYSTEM_GET_TIME:
         {

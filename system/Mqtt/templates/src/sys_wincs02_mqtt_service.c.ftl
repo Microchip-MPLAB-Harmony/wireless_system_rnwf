@@ -51,9 +51,11 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 
 /* This section lists the other files that are included in this file.
  */
-#include "system/mqtt/sys_wincs_mqtt_service.h"
-#include "system/net/sys_wincs_net_service.h"
 #include "system/sys_wincs_system_service.h"
+#include "system/net/sys_wincs_net_service.h"
+#include "system/mqtt/sys_wincs_mqtt_service.h"
+
+
 
 /* ************************************************************************** */
 /* ************************************************************************** */
@@ -70,11 +72,35 @@ static SYS_WINCS_MQTT_CALLBACK_t g_MqttCallBackHandler[SYS_WINCS_MQTT_SERVICE_CB
 /* ************************************************************************** */
 /* ************************************************************************** */
 
+// *****************************************************************************
+// Function: SYS_WINCS_MQTT_ConnCallback
+//
+// Summary:
+//    MQTT connection callback function.
+//
+// Description:
+//    This function is called when there is a change in the MQTT connection status.
+//    It handles the connection status and performs necessary actions based on the
+//    connection state.
+//
+// Parameters:
+//    handle      - The driver handle
+//    userCtx     - User context
+//    state       - The connection status type
+//    pConnInfo   - Pointer to the connection information
+//
+// Returns:
+//    None
+//
+// Remarks:
+//    None
+// *****************************************************************************
 static void SYS_WINCS_MQTT_ConnCallback
 (
     DRV_HANDLE handle, 
     uintptr_t userCtx, 
-    WDRV_WINC_MQTT_CONN_STATUS_TYPE state
+    WDRV_WINC_MQTT_CONN_STATUS_TYPE state,
+    WDRV_WINC_MQTT_CONN_INFO *pConnInfo
 )
 {
     SYS_WINCS_MQTT_CALLBACK_t mqtt_cb_func = g_MqttCallBackHandler[1];
@@ -82,7 +108,9 @@ static void SYS_WINCS_MQTT_ConnCallback
     {
         case WDRV_WINC_MQTT_CONN_STATUS_CONNECTED:
         {
-            mqtt_cb_func(SYS_WINCS_MQTT_CONNECTED, NULL);
+            SYS_WINC_MQTT_CONN_ACK_PROP *mqttConnAckProp = 
+                    (SYS_WINC_MQTT_CONN_ACK_PROP *)pConnInfo;
+            mqtt_cb_func(SYS_WINCS_MQTT_CONNECTED, mqttConnAckProp);
             break;
         }
         
@@ -113,6 +141,29 @@ static void SYS_WINCS_MQTT_ConnCallback
 }
 
 
+<#if SYS_RNWF_MQTT_PUBLISH == true>  
+// *****************************************************************************
+/**
+ * @brief MQTT Publish Callback function
+ *
+ * Summary:
+ *    This function is called when an MQTT publish operation completes.
+ *
+ * Description:
+ *    This function handles the completion of an MQTT publish operation. It is 
+ *    called with various parameters including the handle to the driver, user 
+ *    context, publish handle, packet ID, and the status of the publish operation.
+ *
+ * Parameters:
+ *    @param handle      The handle to the driver.
+ *    @param userCtx     The user context provided during the publish operation.
+ *    @param pubHandle   The handle to the MQTT publish operation.
+ *    @param packetId    The packet ID of the published message.
+ *    @param status      The status of the publish operation.
+ *
+ * Returns:
+ *    void
+ */
 void SYS_WINCS_MQTT_PublishCallback
 (
     DRV_HANDLE handle, 
@@ -123,6 +174,7 @@ void SYS_WINCS_MQTT_PublishCallback
 )
 {
     SYS_WINCS_MQTT_CALLBACK_t mqtt_cb_func = g_MqttCallBackHandler[1];
+    
     switch(status)
     {
         case WDRV_WINC_MQTT_PUB_STATUS_SENT:
@@ -133,7 +185,7 @@ void SYS_WINCS_MQTT_PublishCallback
         
         case WDRV_WINC_MQTT_PUB_STATUS_RECV:
         {
-            mqtt_cb_func(SYS_WINCS_MQTT_PUBLISH_MSG_RECV, NULL );
+            mqtt_cb_func(SYS_WINCS_MQTT_PUBLISH_MSG_ACK, NULL );
             break;
         }
         
@@ -142,13 +194,40 @@ void SYS_WINCS_MQTT_PublishCallback
             mqtt_cb_func(SYS_WINCS_MQTT_ERROR, NULL );
             break;
         }
+        
         default:
             break;
     }
 }
+</#if> 
 
 
-
+// *****************************************************************************
+// Function: SYS_WINCS_MQTT_SubscribeCallback
+//
+// Summary:
+//    MQTT subscription callback function.
+//
+// Description:
+//    This function is called when there is a change in the MQTT subscription status
+//    or when a message is received on a subscribed topic. It handles the subscription
+//    status and processes the received message.
+//
+// Parameters:
+//    handle        - The driver handle
+//    userCtx       - User context
+//    pMsgInfo      - Pointer to the message information
+//    pTopicName    - Pointer to the topic name
+//    pTopicData    - Pointer to the topic data
+//    topicDataLen  - Length of the topic data
+//    status        - The subscription status type
+//
+// Returns:
+//    None
+//
+// Remarks:
+//    None
+// *****************************************************************************
 void SYS_WINCS_MQTT_SubscribeCallback
 (
     DRV_HANDLE handle, 
@@ -165,15 +244,33 @@ void SYS_WINCS_MQTT_SubscribeCallback
     {
         case WDRV_WINC_MQTT_SUB_STATUS_ACKED:
         {
-            mqtt_cb_func(SYS_WINCS_MQTT_SUBCRIBE_ACK, NULL );
+            mqtt_cb_func(SYS_WINCS_MQTT_SUBCRIBE_ACK,NULL);
             break;
         }
         
         case WDRV_WINC_MQTT_SUB_STATUS_RXDATA:
         {
-            mqtt_cb_func(SYS_WINCS_MQTT_SUBCRIBE_MSG, (uint8_t *)pTopicData );
+            // Create an MQTT frame to hold the received message details
+            SYS_WINCS_MQTT_FRAME_t mqttRxFrame;
+
+            // Populate the MQTT frame with the topic name and message data
+            mqttRxFrame.topic = (char *)pTopicName;
+            mqttRxFrame.message = (char *)pTopicData;
+<#if SYS_RNWF_MQTT_PUBLISH == true>   
+            // Populate the MQTT frame with the message properties
+            mqttRxFrame.publishProp.isValid = pMsgInfo->pProperties->isValid;
+            mqttRxFrame.publishProp.messageExpiryInterval = pMsgInfo->pProperties->messageExpiryInterval;
+            mqttRxFrame.publishProp.payloadFormatIndicator = pMsgInfo->pProperties->payloadFormatIndicator;
+
+            // Copy the content type property
+            memcpy(&mqttRxFrame.publishProp.contentType, &pMsgInfo->pProperties->contentType, sizeof(pMsgInfo->pProperties->contentType));
+</#if>
+            // Call the callback function with the received message
+            mqtt_cb_func(SYS_WINCS_MQTT_SUBCRIBE_MSG, (void *)&mqttRxFrame);
+
             break;
         }
+
         
         case WDRV_WINC_MQTT_SUB_STATUS_ERROR:
         {
@@ -192,18 +289,36 @@ void SYS_WINCS_MQTT_SubscribeCallback
     }
 }
 
-
-
-/*MQTT Service control function*/
+// *****************************************************************************
+// Function: SYS_WINCS_MQTT_SrvCtrl
+//
+// Summary:
+//    MQTT service control function.
+//
+// Description:
+//    This function handles various MQTT service control requests. It processes
+//    the specified request and performs the corresponding action on the given
+//    MQTT handle.
+//
+// Parameters:
+//    request     - The MQTT service request type
+//    mqttHandle  - The MQTT handle
+//
+// Returns:
+//    SYS_WINCS_RESULT_t - Result of the service control request
+//
+// Remarks:
+//    None
+// *****************************************************************************
 SYS_WINCS_RESULT_t SYS_WINCS_MQTT_SrvCtrl
 (
-	 SYS_WINCS_MQTT_SERVICE_t request, 
-	 void *input
-)  
+    SYS_WINCS_MQTT_SERVICE_t request, 
+    SYS_WINCS_MQTT_HANDLE_t mqttHandle
+)
 {
     DRV_HANDLE wdrvHandle = DRV_HANDLE_INVALID;
     
-    SYS_WINCS_WIFI_SrvCtrl(SYS_WINCS_WIFI_GET_DRV_HANDLE,&wdrvHandle);
+    SYS_WINCS_WIFI_SrvCtrl(SYS_WINCS_WIFI_GET_DRV_HANDLE, &wdrvHandle);
     WDRV_WINC_STATUS status = WDRV_WINC_STATUS_OK;
     
     switch(request)
@@ -211,146 +326,200 @@ SYS_WINCS_RESULT_t SYS_WINCS_MQTT_SrvCtrl
         /**<Configure the MQTT Broker parameters*/
         case SYS_WINCS_MQTT_CONFIG:
         {
-            SYS_WINCS_MQTT_CFG_t *mqtt_cfg = (SYS_WINCS_MQTT_CFG_t *)input;  
+            SYS_WINCS_MQTT_CFG_t *mqtt_cfg = (SYS_WINCS_MQTT_CFG_t *)mqttHandle;  
             
-            WDRV_WINC_TLS_HANDLE tlsHandle = 0;
-            if(mqtt_cfg->tls_idx != 0)
+            if(mqtt_cfg->tlsIdx == true)
             {
-                SYS_WINCS_NET_SockSrvCtrl(SYS_WINCS_NET_OPEN_TLS_CTX,(void *)&tlsHandle);
+                mqtt_cfg->tlsHandle = 0;
+                SYS_WINCS_NET_SockSrvCtrl(SYS_WINCS_NET_OPEN_TLS_CTX,NULL);
+                SYS_WINCS_NET_SockSrvCtrl(SYS_WINCS_NET_GET_TLS_CTX_HANDLE,(void *)&mqtt_cfg->tlsHandle);
+                if( mqtt_cfg->tlsHandle == WDRV_WINC_TLS_INVALID_HANDLE)
+                {
+                    status = WDRV_WINC_STATUS_INVALID_CONTEXT;
+                    return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+                }
+                
+                if (SYS_WINCS_FAIL == SYS_WINCS_NET_SockSrvCtrl(SYS_WINCS_NET_TLS_CONFIG, mqtt_cfg->tlsConf))
+                {
+                    status = WDRV_WINC_STATUS_INVALID_CONTEXT;
+                    return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+                }
+            }
+            else
+            {
+                mqtt_cfg->tlsHandle = 0;
             }
             
-            status = WDRV_WINC_MQTTBrokerSet(wdrvHandle,mqtt_cfg->url, mqtt_cfg->port,tlsHandle );
+            status = WDRV_WINC_MQTTBrokerSet(wdrvHandle,mqtt_cfg->url,
+                        mqtt_cfg->port, mqtt_cfg->tlsHandle );
             if (WDRV_WINC_STATUS_OK != status)
             {
-                break;
+                return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
             }
             
-            status = WDRV_WINC_MQTTClientCfgSet(wdrvHandle,mqtt_cfg->clientid,mqtt_cfg->username, 
-                    mqtt_cfg->password );
-            if (WDRV_WINC_STATUS_OK != status)
-            {
-                break;
-            }
-            break;
-        }    
-		
+            status = WDRV_WINC_MQTTClientCfgSet(wdrvHandle,mqtt_cfg->clientId,
+                        mqtt_cfg->username, mqtt_cfg->password );
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+        }  
+<#if SYS_RNWF_MQTT_VERSION == "v5">   
+        
+        case SYS_WINCS_MQTT_USER_PROP_SET:
+        {
+            SYS_WINCS_MQTT_USER_PROP *userPop = (SYS_WINCS_MQTT_USER_PROP *)mqttHandle;
+            
+            status = WDRV_WINC_MQTTUserPropSet(wdrvHandle, userPop->key, strlen((char *)userPop->key),
+                    userPop->value, strlen((char *)userPop->value));
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+        }
+</#if>   		
 		/**<Connect to the MQTT Broker */  
         case SYS_WINCS_MQTT_CONNECT:
         {
-            SYS_WINCS_MQTT_CFG_t *mqtt_config = (SYS_WINCS_MQTT_CFG_t *)input; 
+            SYS_WINCS_MQTT_CFG_t *mqttConfig = (SYS_WINCS_MQTT_CFG_t *)mqttHandle; 
             
-            status =  WDRV_WINC_MQTTConnect(wdrvHandle, mqtt_config->clean_session,
-                    mqtt_config->keep_alive_time, mqtt_config->protoVer, SYS_WINCS_MQTT_ConnCallback, 0);
-            
-            if (WDRV_WINC_STATUS_OK != status)
+            if(mqttConfig->protoVer == SYS_WINCS_MQTT_PROTO_VER_3)
             {
-                break;
+                status =  WDRV_WINC_MQTTConnect(wdrvHandle, mqttConfig->cleanSession,
+                        mqttConfig->keepAliveTime, mqttConfig->protoVer,
+                        NULL, SYS_WINCS_MQTT_ConnCallback, 0);
             }
-			break;
+            else if(mqttConfig->protoVer == SYS_WINCS_MQTT_PROTO_VER_5)
+            {
+                WDRV_WINC_MQTT_CONN_PROP mqttConnProp = {
+                    .sessionExpiryInterval = mqttConfig->sessionExpiryInterval
+                };
+            
+                status =  WDRV_WINC_MQTTConnect(wdrvHandle, mqttConfig->cleanSession,
+                            mqttConfig->keepAliveTime, mqttConfig->protoVer,
+                            &mqttConnProp, SYS_WINCS_MQTT_ConnCallback, 0);
+            }
+			return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
 		
-<#if SYS_RNWF_MQTT_LWT_ENABLE == true>   
-        /* Last Will and Testament (LWT) Config */
-        case SYS_WINCS_MQTT_LWT_CONFIG:
-        {
-            SYS_WINCS_MQTT_LWT_CFG_t *mqtt_lwt_config = (SYS_WINCS_MQTT_LWT_CFG_t *)input;
-            status = WDRV_WINC_MQTTLWTSet(wdrvHandle, &mqtt_lwt_config->msg_info, 
-                    mqtt_lwt_config->topic_name,(uint8_t *) mqtt_lwt_config->message, 
-                    strlen((const char *)mqtt_lwt_config->message));
-            break;
-        }
-</#if>       
-
         /**<Trigger Disconnect from MQTT Broker*/        
         case SYS_WINCS_MQTT_DISCONNECT:
 	    {	
             status = WDRV_WINC_MQTTDisconnect(wdrvHandle, WDRV_WINC_MQTT_DISCONN_REASON_CODE_NORMAL);
-            break;
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
-<#if SYS_RNWF_MQTT_AZURE_PUBLISH == true>        
+	
+<#if SYS_RNWF_MQTT_LWT_ENABLE == true>   
+        /* Last Will and Testament (LWT) Configuration */
+        case SYS_WINCS_MQTT_LWT_CONFIG:
+        {
+            SYS_WINCS_MQTT_LWT_CFG_t *mqttLwtConfig = (SYS_WINCS_MQTT_LWT_CFG_t *)mqttHandle;
+            
+            WDRV_WINC_MQTT_MSG_INFO msgInfo;
+            msgInfo.duplicate   = mqttLwtConfig->isDuplicate; 
+            msgInfo.qos         = mqttLwtConfig->qos;
+            msgInfo.retain      = mqttLwtConfig->retain;
+                
+            if(mqttLwtConfig->protoVer == SYS_WINCS_MQTT_PROTO_VER_3)
+            {
+                msgInfo.pProperties = NULL;
+            }
+            else if(mqttLwtConfig->protoVer == SYS_WINCS_MQTT_PROTO_VER_5)
+            {
+                msgInfo.pProperties =(WDRV_WINC_MQTT_PUB_PROP *)&(mqtt_frame->publishProp);
+            }
+            
+            status = WDRV_WINC_MQTTLWTSet(wdrvHandle, &msgInfo, 
+                    mqttLwtConfig->topicName,(uint8_t *) mqttLwtConfig->message, 
+                    strlen(mqttLwtConfig->message));
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+        }
+</#if>   
+
+<#if SYS_RNWF_MQTT_PUBLISH == true>        
         /**<Publis to MQTT Broker*/
         case SYS_WINCS_MQTT_PUBLISH:
         {
-            bool duplicate_msg = true;
-            bool retain_msg = true;
-            
-            SYS_WINCS_MQTT_FRAME_t *mqtt_frame = (SYS_WINCS_MQTT_FRAME_t *)input;
-            if(mqtt_frame->isNew == SYS_WINCS_NEW_MSG)
+            SYS_WINCS_MQTT_FRAME_t *mqtt_frame = (SYS_WINCS_MQTT_FRAME_t *)mqttHandle;
+            WDRV_WINC_MQTT_MSG_INFO msgInfo;
+            msgInfo.duplicate   = mqtt_frame->isDuplicate; 
+            msgInfo.qos         = mqtt_frame->qos;
+            msgInfo.retain      = mqtt_frame->retain;
+                
+            if(mqtt_frame->protoVer == SYS_WINCS_MQTT_PROTO_VER_3)
             {
-                duplicate_msg = false;
+                msgInfo.pProperties = NULL;
             }
-            
-            if(mqtt_frame->isRetain == SYS_WINCS_NO_RETAIN)
+            else if(mqtt_frame->protoVer == SYS_WINCS_MQTT_PROTO_VER_5)
             {
-                retain_msg = false;
+                msgInfo.pProperties =(WDRV_WINC_MQTT_PUB_PROP *)&(mqtt_frame->publishProp);
             }
+
             
-            WDRV_WINC_MQTT_MSG_INFO msgInfo = {
-                duplicate_msg, mqtt_frame->qos, retain_msg
-            };
-            
-            status =  WDRV_WINC_MQTTPublish(wdrvHandle, &msgInfo,(const char *)mqtt_frame->topic,
-                    (const uint8_t *)mqtt_frame->message, (size_t)strlen(mqtt_frame->message), 
-                    SYS_WINCS_MQTT_PublishCallback, 0, NULL);
-            
-            if (WDRV_WINC_STATUS_OK != status)
-            {
-                break;
-            }
-            break;  
+            status =  WDRV_WINC_MQTTPublish(wdrvHandle, &msgInfo,
+                    (const char *)mqtt_frame->topic,(const uint8_t *)mqtt_frame->message, 
+                    (size_t)strlen(mqtt_frame->message), SYS_WINCS_MQTT_PublishCallback, 0, NULL);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);  
         }
+        
 </#if> 
-<#if SYS_RNWF_MQTT_AZURE_SUBSCRIBE == true>                  
+<#if SYS_RNWF_MQTT_SUBSCRIBE == true>                  
         /**<Subscribe to Topics */
         case SYS_WINCS_MQTT_SUBS_TOPIC:
         {
-            SYS_WINCS_MQTT_FRAME_t *mqtt_frame = (SYS_WINCS_MQTT_FRAME_t *)input;
-            status =  WDRV_WINC_MQTTSubscribe(wdrvHandle, mqtt_frame->qos,
-                   mqtt_frame->topic ,SYS_WINCS_MQTT_SubscribeCallback, 0);
-            if (WDRV_WINC_STATUS_OK != status)
+            SYS_WINCS_MQTT_FRAME_t *mqttFrame = (SYS_WINCS_MQTT_FRAME_t *)mqttHandle;
+            
+            if(mqttFrame->protoVer == SYS_WINCS_MQTT_PROTO_VER_3)
             {
-                break;
+                status =  WDRV_WINC_MQTTSubscribe(wdrvHandle, mqttFrame->qos,
+                        mqttFrame->topic ,        NULL,
+                        SYS_WINCS_MQTT_SubscribeCallback, 0);
             }
-            break;
+            else if(mqttFrame->protoVer == SYS_WINCS_MQTT_PROTO_VER_5)
+            {
+                WDRV_WINC_MQTT_SUB_PROP *mqtt_sub_prop =
+                    (WDRV_WINC_MQTT_SUB_PROP *)&mqttFrame->subscribeProp;
+                
+                status =  WDRV_WINC_MQTTSubscribe(wdrvHandle, mqttFrame->qos,
+                        mqttFrame->topic ,        mqtt_sub_prop,
+                        SYS_WINCS_MQTT_SubscribeCallback, 0);
+            }
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
 	
+        /* Un-subscribe from a topic */
         case SYS_WINCS_MQTT_UNSUBSCRIBE:
         {
-            char *topicName = (char *)input;
+            char *topicName = (char *)mqttHandle;
             status =  WDRV_WINC_MQTTUnsubscribe(wdrvHandle, topicName);
-            break;
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
         }
 </#if>        
         /**<Configure the MQTT Application Callback*/ 
         case SYS_WINCS_MQTT_SET_CALLBACK:
         {
-            g_MqttCallBackHandler[1] = (SYS_WINCS_MQTT_CALLBACK_t)(input);
-            break;
+            g_MqttCallBackHandler[1] = (SYS_WINCS_MQTT_CALLBACK_t)(mqttHandle);
+            return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_OK, __FUNCTION__, __LINE__); 
         }
 
         /**<Configure the MQTT Application Callback*/     
         case SYS_WINCS_MQTT_SET_SRVC_CALLBACK:        
         {
-            g_MqttCallBackHandler[0] = (SYS_WINCS_MQTT_CALLBACK_t)(input);   
-            break;
+            g_MqttCallBackHandler[0] = (SYS_WINCS_MQTT_CALLBACK_t)(mqttHandle);   
+            return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_OK, __FUNCTION__, __LINE__); 
         }
-        
         
         case SYS_WINCS_MQTT_GET_CALLBACK:
         {
             SYS_WINCS_MQTT_CALLBACK_t *mqttCallBackHandler;
-            mqttCallBackHandler = (SYS_WINCS_MQTT_CALLBACK_t *)input;
+            mqttCallBackHandler = (SYS_WINCS_MQTT_CALLBACK_t *)mqttHandle;
             
             mqttCallBackHandler[0] = g_MqttCallBackHandler[0];
             mqttCallBackHandler[1] = g_MqttCallBackHandler[1];
-            break;
+            return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_OK, __FUNCTION__, __LINE__); 
         }
             
         default:
-            break;    
+        {
+            SYS_WINCS_MQTT_DBG_MSG("ERROR : Unknown MQTT Service Request\r\n");
+        }   
     }
     
-    return SYS_WINCS_WIFI_GetWincsStatus(status);
+    return SYS_WINCS_FAIL;
 }
 
 

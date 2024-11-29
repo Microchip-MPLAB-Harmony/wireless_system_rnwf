@@ -103,6 +103,9 @@ typedef struct
 
 }SYS_RNWF_PROV_PARAM_t;
 
+/* Handle for WIFI Configurations */
+typedef void * SYS_RNWF_WIFI_PROV_HANDLE_t;
+
 /**
  * @brief       Wi-Fi callback function type
  * 
@@ -110,10 +113,10 @@ typedef struct
  * @param[out]  msg Received data related to the passed event   
  * 
  */
-typedef void (*SYS_RNWF_PROV_CALLBACK_t)(SYS_RNWF_PROV_EVENT_t event, uint8_t *msg);
+typedef void (*SYS_RNWF_PROV_CALLBACK_t)(SYS_RNWF_PROV_EVENT_t event, SYS_RNWF_WIFI_PROV_HANDLE_t);
 
 /*Provision Callback service function*/
-SYS_RNWF_RESULT_t SYS_RNWF_PROV_SrvCtrl(SYS_RNWF_PROV_SERVICE_t request, void *input);
+SYS_RNWF_RESULT_t SYS_RNWF_PROV_SrvCtrl(SYS_RNWF_PROV_SERVICE_t request, SYS_RNWF_WIFI_PROV_HANDLE_t);
    
 
 #ifdef SYS_RNWF_PROVI_WEB_SERVER 

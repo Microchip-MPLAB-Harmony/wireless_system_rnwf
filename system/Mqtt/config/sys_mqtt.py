@@ -27,7 +27,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 ################################################################################
 global mqtt_helpkeyword
 sysrnwfMqttSubTopicInstance = []
-sysrnwfMqttAzureSubQos = []
+sysrnwfMqttSubTopicQosInstance = []
 sysrnwfMqttMaxTopic = 5
 sysmqttTopicNumPrev = 1
 
@@ -47,13 +47,29 @@ def instantiateComponent(sysMQTTComponent):
     sysMqttEnableCloudCons.setLabel("Cloud Configuration")
     sysMqttEnableCloudCons.setHelp(mqtt_helpkeyword)
     sysMqttEnableCloudCons.setVisible(True)
+
+    sysmqttversion = sysMQTTComponent.createComboSymbol("SYS_RNWF_MQTT_VERSION", sysMqttEnableCloudCons, ["v3.1.1", "v5"])
+    sysmqttversion.setLabel("MQTT Protocol version")
+    sysmqttversion.setHelp(mqtt_helpkeyword)
+    sysmqttversion.setDescription("Enter MQTT Protocol version")
+    sysmqttversion.setDefaultValue("v3.1.1")
 		
+    sysmqttsessionexpint = sysMQTTComponent.createIntegerSymbol("SYS_RNWF_MQTT_SESSION_EXP_INT", sysmqttversion)
+    sysmqttsessionexpint.setLabel("Session Expiry Interval     ")
+    sysmqttsessionexpint.setHelp(mqtt_helpkeyword)
+    sysmqttsessionexpint.setMin(0)
+    sysmqttsessionexpint.setMax(4294967)
+    sysmqttsessionexpint.setVisible(False)
+    sysmqttsessionexpint.setDescription("Session Expiry interval of the mqtt session")
+    sysmqttsessionexpint.setDefaultValue(0)
+    sysmqttsessionexpint.setDependencies(sysMqttPubMsgPropMenuVisible, ["SYS_RNWF_MQTT_VERSION"])
+
     sysmqttBrokerName = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_CLOUD_URL", sysMqttEnableCloudCons)
     sysmqttBrokerName.setLabel("Cloud URL")
     sysmqttBrokerName.setHelp(mqtt_helpkeyword)
     sysmqttBrokerName.setVisible(True)
     sysmqttBrokerName.setDescription(" Configure Cloud provider endpoint / MQTT Broker URL")
-    sysmqttBrokerName.setDefaultValue("")
+    sysmqttBrokerName.setDefaultValue("test.mosquitto.org")
     sysmqttBrokerName.setDependencies(mqttSNIAutoMenu, ["SYS_RNWF_MQTT_CLOUD_URL"])
 
     sysmqttPort = sysMQTTComponent.createIntegerSymbol("SYS_RNWF_MQTT_CLOUD_PORT", sysMqttEnableCloudCons)
@@ -62,13 +78,275 @@ def instantiateComponent(sysMQTTComponent):
     sysmqttPort.setMin(1)
     sysmqttPort.setMax(65535)
     sysmqttPort.setDescription("Configure Cloud/MQTT port")
-    sysmqttPort.setDefaultValue(8883)
+    sysmqttPort.setDefaultValue(1883) 
+
+    sysMqttcleanSession = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_CLEAN_SESSION", sysMqttEnableCloudCons)
+    sysMqttcleanSession.setLabel("Clean Session")
+    sysMqttcleanSession.setHelp(mqtt_helpkeyword)
+    sysMqttcleanSession.setVisible(True)
+    sysMqttcleanSession.setDefaultValue(True)
+
+    sysmqttClientId = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_CLIENT_ID", sysMqttEnableCloudCons)
+    sysmqttClientId.setLabel("Client Id")
+    sysmqttClientId.setHelp(mqtt_helpkeyword)
+    sysmqttClientId.setVisible(True)
+    sysmqttClientId.setDescription("MQTT Client Id which should be unique for the MQTT Broker. If empty, the id will be randomly generated")
+    sysmqttClientId.setDefaultValue("MCHP_device_01")
+
+    sysmqttUserName = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_CLOUD_USER_NAME", sysMqttEnableCloudCons)
+    sysmqttUserName.setLabel("User Name")
+    sysmqttUserName.setHelp(mqtt_helpkeyword)
+    sysmqttUserName.setVisible(True)
+    sysmqttUserName.setDescription("Configure Cloud Client user name")
+    sysmqttUserName.setDefaultValue("")
+
+    sysmqttPassword = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_PASSWORD", sysMqttEnableCloudCons)
+    sysmqttPassword.setLabel("Password")
+    sysmqttPassword.setHelp(mqtt_helpkeyword)
+    sysmqttPassword.setVisible(True)
+    sysmqttPassword.setDescription("Enter the cloud client password")
+    sysmqttPassword.setDefaultValue("")
+
+    sysMqttKeepAlive = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_KEEP_ALIVE", sysMqttEnableCloudCons)
+    sysMqttKeepAlive.setLabel("Keep Alive")
+    sysMqttKeepAlive.setHelp(mqtt_helpkeyword)
+    sysMqttKeepAlive.setVisible(True)
+    sysMqttKeepAlive.setDefaultValue(False)
+
+    sysMqttKeepAliveInt = sysMQTTComponent.createIntegerSymbol("SYS_RNWF_MQTT_KEEP_ALIVE_INT", sysMqttKeepAlive)
+    sysMqttKeepAliveInt.setLabel("Keep Alive Interval")
+    sysMqttKeepAliveInt.setHelp(mqtt_helpkeyword)
+    sysMqttKeepAliveInt.setVisible(False)
+    sysMqttKeepAliveInt.setDescription("Configure the field in the range of 1-1000 (in seconds)")
+    sysMqttKeepAliveInt.setMin(0)
+    sysMqttKeepAliveInt.setMax(10000)
+    sysMqttKeepAliveInt.setDefaultValue(60)
+    sysMqttKeepAliveInt.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_KEEP_ALIVE"])
+
+
+    sysMqttLwtEnable = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_LWT_ENABLE", sysMqttEnableCloudCons)
+    sysMqttLwtEnable.setLabel("Last Will and Testament (LWT) ")
+    sysMqttLwtEnable.setHelp(mqtt_helpkeyword)
+    sysMqttLwtEnable.setVisible(True)
+    sysMqttLwtEnable.setDefaultValue(False)
+
+    sysMqttLwtMessage = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_LWT_MESSAGE", sysMqttLwtEnable)
+    sysMqttLwtMessage.setLabel("LWT Message ")
+    sysMqttLwtMessage.setHelp(mqtt_helpkeyword)
+    sysMqttLwtMessage.setVisible(False)
+    sysMqttLwtMessage.setDescription("LWT Message ")
+    sysMqttLwtMessage.setDefaultValue("Disconnecting ....Bye")
+    sysMqttLwtMessage.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_LWT_ENABLE"])
+
+    sysMqttSubscribe = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_SUBSCRIBE", sysMqttEnableCloudCons)
+    sysMqttSubscribe.setLabel("Subscribe")
+    sysMqttSubscribe.setHelp(mqtt_helpkeyword)
+    sysMqttSubscribe.setVisible(True)
+    sysMqttSubscribe.setDefaultValue(False) 
+
+    sysMqttTotalSubTopics = sysMQTTComponent.createIntegerSymbol("SYS_RNWF_MQTT_TOTAL_SUB_TOPICS", sysMqttSubscribe)
+    sysMqttTotalSubTopics.setLabel("Total Subscribe Topics")
+    sysMqttTotalSubTopics.setHelp(mqtt_helpkeyword)
+    sysMqttTotalSubTopics.setVisible(False)
+    sysMqttTotalSubTopics.setDescription("Number of subscribe tipics (1 to 5)")
+    sysMqttTotalSubTopics.setMin(1)
+    sysMqttTotalSubTopics.setMax(sysrnwfMqttMaxTopic)
+    sysMqttTotalSubTopics.setDefaultValue(1)
+    sysMqttTotalSubTopics.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_SUBSCRIBE"])
+
+
+    # Get Size of Each Slot
+    for slot in range(0,sysrnwfMqttMaxTopic):
+       sysrnwfMqttSubTopicInstance.append(sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_SUB_TOPIC"+str(slot),sysMqttTotalSubTopics))
+       sysrnwfMqttSubTopicInstance[slot].setLabel("Sub Topic "+ str(slot))
+       sysMqttTotalSubTopics.setHelp(mqtt_helpkeyword)
+       print(sysMqttTotalSubTopics.getValue())
+
+       sysrnwfMqttSubTopicQosInstance.append(sysMQTTComponent.createComboSymbol("SYS_RNWF_MQTT_SUB_TOPIC_QOS"+str(slot),sysrnwfMqttSubTopicInstance[slot], ["QOS0", "QOS1" , "QOS2"]))
+       sysrnwfMqttSubTopicQosInstance[slot].setLabel("QoS ")
+       sysrnwfMqttSubTopicQosInstance[slot].setDescription("Quality of Service (QoS) type for the Subscrition")
+
+       sysMqttTotalSubTopics.setHelp(mqtt_helpkeyword)
+       print(sysMqttTotalSubTopics.getValue())
+
+
+       if (slot < sysMqttTotalSubTopics.getValue()):
+            sysrnwfMqttSubTopicInstance[slot].setVisible(True)
+            sysrnwfMqttSubTopicQosInstance[slot].setVisible(True)
+       else:
+            sysrnwfMqttSubTopicInstance[slot].setVisible(False)
+            sysrnwfMqttSubTopicQosInstance[slot].setVisible(True)
+       sysrnwfMqttSubTopicInstance[slot].setDependencies(sysmqttTopicInstanceEnable,["SYS_RNWF_MQTT_SUBSCRIBE","SYS_RNWF_MQTT_TOTAL_SUB_TOPICS"])
+
+    sysMqttPublish = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_PUBLISH", sysMqttEnableCloudCons)
+    sysMqttPublish.setLabel("Publish")
+    sysMqttPublish.setHelp(mqtt_helpkeyword)
+    sysMqttPublish.setVisible(True)
+    sysMqttPublish.setDefaultValue(False) 
+
+    sysmqttPubTopicName = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_PUB_TOPIC_NAME", sysMqttPublish)
+    sysmqttPubTopicName.setLabel("Publish Topic Name")
+    sysmqttPubTopicName.setHelp(mqtt_helpkeyword)
+    sysmqttPubTopicName.setVisible(False)
+    sysmqttPubTopicName.setDescription("Enter the Publish topic Name")
+    sysmqttPubTopicName.setDefaultValue("$MCHP/Wireless/device01")
+    sysmqttPubTopicName.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_PUBLISH"])
+
+    sysmqttPubMsg = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_PUB_MSG", sysMqttPublish)
+    sysmqttPubMsg.setLabel("Publish Message ")
+    sysmqttPubMsg.setHelp(mqtt_helpkeyword)
+    sysmqttPubMsg.setVisible(False)
+    sysmqttPubMsg.setDescription("Enter the publish message")
+    sysmqttPubMsg.setDefaultValue("Hi. It's MCHP Wireless Device")
+    sysmqttPubMsg.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_PUBLISH"])
+
+    sysMqttQosType = sysMQTTComponent.createComboSymbol("SYS_RNWF_MQTT_PUB_QOS_TYPE", sysMqttPublish , ["QOS0", "QOS1" , "QOS2"])
+    sysMqttQosType.setLabel("Pub. QoS")
+    sysMqttQosType.setHelp(mqtt_helpkeyword)
+    sysMqttQosType.setVisible(False)
+    sysMqttQosType.setDescription("QoS type for the message")
+    sysMqttQosType.setDefaultValue("QOS0")
+    sysMqttQosType.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_PUBLISH"])
+
+    sysMqttMsgRetainFlag = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_RETAIN_FLAG", sysMqttPublish)
+    sysMqttMsgRetainFlag.setLabel("Retain Flag")
+    sysMqttMsgRetainFlag.setHelp(mqtt_helpkeyword)
+    sysMqttMsgRetainFlag.setVisible(False)
+    sysMqttMsgRetainFlag.setDefaultValue(False) 
+    sysMqttMsgRetainFlag.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_PUBLISH"])
+
+
+    sysMqtttxprop = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_TX_PROP", sysMqttPublish)
+    sysMqtttxprop.setLabel("Msg Transmit Properties")
+    sysMqtttxprop.setHelp(mqtt_helpkeyword)
+    sysMqtttxprop.setVisible(False)
+    sysMqtttxprop.setDependencies(sysMqttPubMsgPropMenuVisible, ["SYS_RNWF_MQTT_TX_PROP", "SYS_RNWF_MQTT_VERSION"])
+
+    sysMqttpaylodformatind = sysMQTTComponent.createComboSymbol("SYS_RNWF_MQTT_PAYLOD_FORMAT_IND", sysMqtttxprop , ["Un-specified", "UTF8-encoded"])
+    sysMqttpaylodformatind.setLabel("Paylod Format Indicator")
+    sysMqttpaylodformatind.setHelp(mqtt_helpkeyword)
+    sysMqttpaylodformatind.setVisible(False)
+    sysMqttpaylodformatind.setDescription("Paylod format :: unspecified byte stream OR UTF8 encoded payload")
+    sysMqttpaylodformatind.setDefaultValue("Un-specified")
+    sysMqttpaylodformatind.setDependencies(sysMqttPubMsgPropMenuVisible, ["SYS_RNWF_MQTT_TX_PROP"])
+
+    sysmqttmsgexpint = sysMQTTComponent.createIntegerSymbol("SYS_RNWF_MQTT_MSG_EXP_INT", sysMqtttxprop)
+    sysmqttmsgexpint.setLabel("Message Expiry Interval")
+    sysmqttmsgexpint.setHelp(mqtt_helpkeyword)
+    sysmqttmsgexpint.setMin(0)
+    sysmqttmsgexpint.setMax(120)
+    sysmqttmsgexpint.setVisible(False)
+    sysmqttmsgexpint.setDescription("Expiry interval of the mqtt message")
+    sysmqttmsgexpint.setDefaultValue(0)
+    sysmqttmsgexpint.setDependencies(sysMqttPubMsgPropMenuVisible, ["SYS_RNWF_MQTT_TX_PROP"])
+
+    sysmqttcontenttype = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_CONTENT_TYPE", sysMqtttxprop)
+    sysmqttcontenttype.setLabel("Content type")
+    sysmqttcontenttype.setHelp(mqtt_helpkeyword)
+    sysmqttcontenttype.setVisible(False)
+    sysmqttcontenttype.setDescription("Content type of the message")
+    sysmqttcontenttype.setDefaultValue("")
+    sysmqttcontenttype.setDependencies(sysMqttPubMsgPropMenuVisible, ["SYS_RNWF_MQTT_TX_PROP"])
+
+    sysmqttuserproperty = sysMQTTComponent.createBooleanSymbol("SYS_MQTT_USER_PROP", sysMqtttxprop)
+    sysmqttuserproperty.setLabel("User Property")
+    sysmqttuserproperty.setHelp(mqtt_helpkeyword)
+    sysmqttuserproperty.setVisible(False)
+    sysmqttuserproperty.setDescription("MQTT user property")
+    sysmqttuserproperty.setDefaultValue(False)
+    sysmqttuserproperty.setDependencies(sysMqttPubMsgPropMenuVisible, ["SYS_RNWF_MQTT_TX_PROP"])
+
+    sysmqttuserpropKey = sysMQTTComponent.createStringSymbol("SYS_MQTT_USER_PROP_KEY", sysmqttuserproperty)
+    sysmqttuserpropKey.setLabel("Key ")
+    sysmqttuserpropKey.setHelp(mqtt_helpkeyword)
+    sysmqttuserpropKey.setVisible(False)
+    sysmqttuserpropKey.setDescription("MQTT user property Key")
+    sysmqttuserpropKey.setDefaultValue("")
+    sysmqttuserpropKey.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_USER_PROP"])
+
+    sysmqttuserpropValue = sysMQTTComponent.createStringSymbol("SYS_MQTT_USER_PROP_VALUE", sysmqttuserproperty)
+    sysmqttuserpropValue.setLabel("Value")
+    sysmqttuserpropValue.setHelp(mqtt_helpkeyword)
+    sysmqttuserpropValue.setVisible(False)
+    sysmqttuserpropValue.setDescription("MQTT user property Value")
+    sysmqttuserpropValue.setDefaultValue("")
+    sysmqttuserpropValue.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_USER_PROP"])
+
+
+    sysMqttEnableTls = sysMQTTComponent.createBooleanSymbol("SYS_MQTT_ENABLE_TLS", sysMqttEnableCloudCons)
+    sysMqttEnableTls.setLabel("Enable TLS")
+    sysMqttEnableTls.setHelp(mqtt_helpkeyword)
+    sysMqttEnableTls.setVisible(True)
+    sysMqttEnableTls.setDefaultValue(False)
+
+    sysMqttTlsPeeerAuth = sysMQTTComponent.createBooleanSymbol("SYS_MQTT_ENABLE_PEER_AUTH", sysMqttEnableTls)
+    sysMqttTlsPeeerAuth.setLabel("Peer authentication")
+    sysMqttTlsPeeerAuth.setHelp(mqtt_helpkeyword)
+    sysMqttTlsPeeerAuth.setVisible(False)
+    sysMqttTlsPeeerAuth.setDefaultValue(False)
+    sysMqttTlsPeeerAuth.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_ENABLE_TLS"])
+
+    sysMqttTlsServerCert = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_SERVER_CERT", sysMqttTlsPeeerAuth)
+    sysMqttTlsServerCert.setLabel("Root CA")
+    sysMqttTlsServerCert.setHelp(mqtt_helpkeyword)
+    sysMqttTlsServerCert.setVisible(False)
+    sysMqttTlsServerCert.setDescription("TLS Server Certificate Name")
+    sysMqttTlsServerCert.setDefaultValue("")
+    sysMqttTlsServerCert.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_ENABLE_PEER_AUTH"])
+    
+    sysMqttTlsDeviceCert = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_DEVICE_CERT", sysMqttEnableTls)
+    sysMqttTlsDeviceCert.setLabel("Device Certificate")
+    sysMqttTlsDeviceCert.setHelp(mqtt_helpkeyword)
+    sysMqttTlsDeviceCert.setVisible(False)
+    sysMqttTlsDeviceCert.setDescription("TLS Device Certificate Name")
+    sysMqttTlsDeviceCert.setDefaultValue("")
+    sysMqttTlsDeviceCert.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_ENABLE_TLS"])
+
+    sysMqttTlsDeviceKey = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_DEVICE_KEY", sysMqttEnableTls)
+    sysMqttTlsDeviceKey.setLabel("Device Key")
+    sysMqttTlsDeviceKey.setHelp(mqtt_helpkeyword)
+    sysMqttTlsDeviceKey.setVisible(False)
+    sysMqttTlsDeviceKey.setDescription("TLS Device Key")
+    sysMqttTlsDeviceKey.setDefaultValue("")
+    sysMqttTlsDeviceKey.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_ENABLE_TLS"])  
+
+    sysMqttTlsDeviceKeyPassword = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_DEVICE_KEY_PSK", sysMqttEnableTls)
+    sysMqttTlsDeviceKeyPassword.setLabel("Device Key Password")
+    sysMqttTlsDeviceKeyPassword.setHelp(mqtt_helpkeyword)
+    sysMqttTlsDeviceKeyPassword.setVisible(False)
+    sysMqttTlsDeviceKeyPassword.setDescription("TLS Device Key Password")
+    sysMqttTlsDeviceKeyPassword.setDefaultValue("")
+    sysMqttTlsDeviceKeyPassword.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_ENABLE_TLS"]) 
+    
+    sysMqttTlsServerName = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_TLS_SERVER_NAME", sysMqttEnableTls)
+    sysMqttTlsServerName.setLabel("Server Name")
+    sysMqttTlsServerName.setHelp(mqtt_helpkeyword)
+    sysMqttTlsServerName.setVisible(False)
+    sysMqttTlsServerName.setDescription("TLS Server name")
+    sysMqttTlsServerName.setDefaultValue("")
+    sysMqttTlsServerName.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_ENABLE_TLS"])
+
+    sysrnwfMqttTlsDomainNameverify = sysMQTTComponent.createBooleanSymbol("SYS_MQTT_DOMAIN_NAME_VERIFY", sysMqttEnableTls)
+    sysrnwfMqttTlsDomainNameverify.setLabel("Domain Name Verify")
+    sysrnwfMqttTlsDomainNameverify.setHelp(mqtt_helpkeyword)
+    sysrnwfMqttTlsDomainNameverify.setVisible(False)
+    sysrnwfMqttTlsDomainNameverify.setDefaultValue(False)
+    sysrnwfMqttTlsDomainNameverify.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_ENABLE_TLS"])
+
+    
+    sysMqttTlsDomainName = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_TLS_DOMAIN_NAME", sysrnwfMqttTlsDomainNameverify)
+    sysMqttTlsDomainName.setLabel("Domain Name")
+    sysMqttTlsDomainName.setHelp(mqtt_helpkeyword)
+    sysMqttTlsDomainName.setVisible(False)
+    sysMqttTlsDomainName.setDescription("TLS Domain name")
+    sysMqttTlsDomainName.setDefaultValue("")
+    sysMqttTlsDomainName.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_DOMAIN_NAME_VERIFY"])
 
     sysMqttAzureDpsEnable = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_AZURE_DPS_ENABLE", sysMqttEnableCloudCons)
     sysMqttAzureDpsEnable.setLabel("Azure DPS Enable")
     sysMqttAzureDpsEnable.setHelp(mqtt_helpkeyword)
     sysMqttAzureDpsEnable.setVisible(True)
-    sysMqttAzureDpsEnable.setDefaultValue(False)  
+    sysMqttAzureDpsEnable.setDefaultValue(False) 
 
     sysmqttScopeId = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_SCOPE_ID", sysMqttAzureDpsEnable)
     sysmqttScopeId.setLabel("Scope Id")
@@ -85,198 +363,6 @@ def instantiateComponent(sysMQTTComponent):
     sysmqttDeviceTemplate.setDescription("Configure Cloud DPS specific device template")
     sysmqttDeviceTemplate.setDefaultValue("")
     sysmqttDeviceTemplate.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_AZURE_DPS_ENABLE"])
-
-    sysmqttUserName = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_CLOUD_USER_NAME", sysMqttEnableCloudCons)
-    sysmqttUserName.setLabel("User Name")
-    sysmqttUserName.setHelp(mqtt_helpkeyword)
-    sysmqttUserName.setVisible(True)
-    sysmqttUserName.setDescription("Configure Cloud Client user name")
-    sysmqttUserName.setDefaultValue("")
-
-    sysmqttPassword = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_PASSWORD", sysMqttEnableCloudCons)
-    sysmqttPassword.setLabel("Password")
-    sysmqttPassword.setHelp(mqtt_helpkeyword)
-    sysmqttPassword.setVisible(True)
-    sysmqttPassword.setDescription("Enter the cloud client password")
-    sysmqttPassword.setDefaultValue("")
-
-    sysmqttClientId = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_CLIENT_ID", sysMqttEnableCloudCons)
-    sysmqttClientId.setLabel("Client Id")
-    sysmqttClientId.setHelp(mqtt_helpkeyword)
-    sysmqttClientId.setVisible(True)
-    sysmqttClientId.setDescription("MQTT Client Id which should be unique for the MQTT Broker. If empty, the id will be randomly generated")
-    sysmqttClientId.setDefaultValue("rnwf02_device_01")
-
-    sysmqttversion = sysMQTTComponent.createComboSymbol("SYS_RNWF_MQTT_VERSION", sysMqttEnableCloudCons, ["V3.1.1", "V5"])
-    sysmqttversion.setLabel("MQTT Protocol version")
-    sysmqttversion.setHelp(mqtt_helpkeyword)
-    sysmqttversion.setDescription("Enter MQTT Protocol version")
-    sysmqttversion.setDefaultValue("V3.1.1")
-    sysMqttAzurePublish = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_AZURE_PUBLISH", sysMqttEnableCloudCons)
-    sysMqttAzurePublish.setLabel("Publish")
-    sysMqttAzurePublish.setHelp(mqtt_helpkeyword)
-    sysMqttAzurePublish.setVisible(True)
-    sysMqttAzurePublish.setDefaultValue(False) 
-
-    sysmqttPubTopicName = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_PUB_TOPIC_NAME", sysMqttAzurePublish)
-    sysmqttPubTopicName.setLabel("Publish Topic Name")
-    sysmqttPubTopicName.setHelp(mqtt_helpkeyword)
-    sysmqttPubTopicName.setVisible(False)
-    sysmqttPubTopicName.setDescription("Enter the cloud client password")
-    sysmqttPubTopicName.setDefaultValue("")
-    sysmqttPubTopicName.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_AZURE_PUBLISH"])
-
-    sysMqttQosType = sysMQTTComponent.createComboSymbol("SYS_RNWF_MQTT_QOS_TYPE", sysMqttAzurePublish , ["QOS0", "QOS1" , "QOS2"])
-    sysMqttQosType.setLabel("Pub. QoS")
-    sysMqttQosType.setHelp(mqtt_helpkeyword)
-    sysMqttQosType.setVisible(False)
-    sysMqttQosType.setDescription("QoS type for the message ::RNWF_MQTT_QOS_t")
-    sysMqttQosType.setDefaultValue("QOS0")
-    sysMqttQosType.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_AZURE_PUBLISH"])
-
-    sysMqttAzureRetainFlag = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_AZURE_RETAIN_FLAG", sysMqttAzurePublish)
-    sysMqttAzureRetainFlag.setLabel("Retain Flag")
-    sysMqttAzureRetainFlag.setHelp(mqtt_helpkeyword)
-    sysMqttAzureRetainFlag.setVisible(False)
-    sysMqttAzureRetainFlag.setDefaultValue(False) 
-    sysMqttAzureRetainFlag.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_AZURE_PUBLISH"])
-    
-    sysMqttAzureKeepAlive = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_AZURE_KEEP_ALIVE", sysMqttEnableCloudCons)
-    sysMqttAzureKeepAlive.setLabel("Keep Alive")
-    sysMqttAzureKeepAlive.setHelp(mqtt_helpkeyword)
-    sysMqttAzureKeepAlive.setVisible(True)
-    sysMqttAzureKeepAlive.setDefaultValue(False)
-
-    sysMqttAzureKeepAliveInt = sysMQTTComponent.createIntegerSymbol("SYS_RNWF_MQTT_KEEP_ALIVE_INT", sysMqttAzureKeepAlive)
-    sysMqttAzureKeepAliveInt.setLabel("Keep Alive Interval")
-    sysMqttAzureKeepAliveInt.setHelp(mqtt_helpkeyword)
-    sysMqttAzureKeepAliveInt.setVisible(False)
-    sysMqttAzureKeepAliveInt.setDescription("Configure the field in the range of 1-1000 (in seconds)")
-    sysMqttAzureKeepAliveInt.setMin(0)
-    sysMqttAzureKeepAliveInt.setMax(10000)
-    sysMqttAzureKeepAliveInt.setDefaultValue(60)
-    sysMqttAzureKeepAliveInt.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_AZURE_KEEP_ALIVE"])
-
-    sysMqttLwtEnable = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_LWT_ENABLE", sysMqttEnableCloudCons)
-    sysMqttLwtEnable.setLabel("Last Will and Testament(LWT) ")
-    sysMqttLwtEnable.setHelp(mqtt_helpkeyword)
-    sysMqttLwtEnable.setVisible(True)
-    sysMqttLwtEnable.setDefaultValue(False)
-
-    sysMqttLwtMessage = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_LWT_MESSAGE", sysMqttLwtEnable)
-    sysMqttLwtMessage.setLabel("LWT Message ")
-    sysMqttLwtMessage.setHelp(mqtt_helpkeyword)
-    sysMqttLwtMessage.setVisible(False)
-    sysMqttLwtMessage.setDescription("LWT Message ")
-    sysMqttLwtMessage.setDefaultValue("Disconnecting ....Bye")
-    sysMqttLwtMessage.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_LWT_ENABLE"])
-
-    sysMqttAzureSubscribe = sysMQTTComponent.createBooleanSymbol("SYS_RNWF_MQTT_AZURE_SUBSCRIBE", sysMqttEnableCloudCons)
-    sysMqttAzureSubscribe.setLabel("Subscribe")
-    sysMqttAzureSubscribe.setHelp(mqtt_helpkeyword)
-    sysMqttAzureSubscribe.setVisible(True)
-    sysMqttAzureSubscribe.setDefaultValue(False) 
-
-    sysMqttAzureTotalSubTopics = sysMQTTComponent.createIntegerSymbol("SYS_RNWF_MQTT_TOTAL_SUB_TOPICS", sysMqttAzureSubscribe)
-    sysMqttAzureTotalSubTopics.setLabel("Total Subscribe Topics")
-    sysMqttAzureTotalSubTopics.setHelp(mqtt_helpkeyword)
-    sysMqttAzureTotalSubTopics.setVisible(False)
-    sysMqttAzureTotalSubTopics.setDescription("Number of subscribe tipics (1 to 5)")
-    sysMqttAzureTotalSubTopics.setMin(1)
-    sysMqttAzureTotalSubTopics.setMax(sysrnwfMqttMaxTopic)
-    sysMqttAzureTotalSubTopics.setDefaultValue(3)
-    sysMqttAzureTotalSubTopics.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_AZURE_SUBSCRIBE"])
-
-
-    # Get Size of Each Slot
-    for slot in range(0,sysrnwfMqttMaxTopic):
-       sysrnwfMqttSubTopicInstance.append(sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_SUB_TOPIC"+str(slot),sysMqttAzureTotalSubTopics))
-       sysrnwfMqttSubTopicInstance[slot].setLabel("Sub Topic "+ str(slot))
-       sysMqttAzureTotalSubTopics.setHelp(mqtt_helpkeyword)
-       print(sysMqttAzureTotalSubTopics.getValue())
-
-       if (slot < sysMqttAzureTotalSubTopics.getValue()):
-            sysrnwfMqttSubTopicInstance[slot].setVisible(True)
-       else:
-            sysrnwfMqttSubTopicInstance[slot].setVisible(False)
-       sysrnwfMqttSubTopicInstance[slot].setDependencies(sysmqttTopicInstanceEnable,["SYS_RNWF_MQTT_AZURE_SUBSCRIBE","SYS_RNWF_MQTT_TOTAL_SUB_TOPICS"])
-
-
-    sysMqttAzureSubQos = sysMQTTComponent.createComboSymbol("SYS_RNWF_MQTT_SUB_QOS_TYPE", sysMqttAzureSubscribe , ["QOS0", "QOS1" , "QOS2"])
-    sysMqttAzureSubQos.setLabel("Sub. QoS")
-    sysMqttAzureSubQos.setHelp(mqtt_helpkeyword)
-    sysMqttAzureSubQos.setVisible(False)
-    sysMqttAzureSubQos.setDescription("QoS type for the message ::RNWF_MQTT_QOS_t")
-    sysMqttAzureSubQos.setDefaultValue("QOS0")
-    sysMqttAzureSubQos.setDependencies(sysMqttSubMenuVisible, ["SYS_RNWF_MQTT_AZURE_SUBSCRIBE"])
-
-    sysMqttAzureEnableTls = sysMQTTComponent.createBooleanSymbol("SYS_MQTT_AZURE_ENABLE_TLS", sysMqttEnableCloudCons)
-    sysMqttAzureEnableTls.setLabel("Enable TLS")
-    sysMqttAzureEnableTls.setHelp(mqtt_helpkeyword)
-    sysMqttAzureEnableTls.setVisible(True)
-    sysMqttAzureEnableTls.setDefaultValue(False)
-
-    sysMqttTlsPeeerAuth = sysMQTTComponent.createBooleanSymbol("SYS_MQTT_AZURE_ENABLE_PEER_AUTH", sysMqttAzureEnableTls)
-    sysMqttTlsPeeerAuth.setLabel("Peer authentication")
-    sysMqttTlsPeeerAuth.setHelp(mqtt_helpkeyword)
-    sysMqttTlsPeeerAuth.setVisible(False)
-    sysMqttTlsPeeerAuth.setDefaultValue(False)
-    sysMqttTlsPeeerAuth.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_AZURE_ENABLE_TLS"])
-    sysMqttTlsServerCert = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_SERVER_CERT", sysMqttTlsPeeerAuth)
-    sysMqttTlsServerCert.setLabel("Root CA")
-    sysMqttTlsServerCert.setHelp(mqtt_helpkeyword)
-    sysMqttTlsServerCert.setVisible(False)
-    sysMqttTlsServerCert.setDescription("TLS Server Certificate Name")
-    sysMqttTlsServerCert.setDefaultValue("")
-    sysMqttTlsServerCert.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_AZURE_ENABLE_TLS"])
-    
-    sysMqttTlsDeviceCert = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_DEVICE_CERT", sysMqttAzureEnableTls)
-    sysMqttTlsDeviceCert.setLabel("Device Certificate")
-    sysMqttTlsDeviceCert.setHelp(mqtt_helpkeyword)
-    sysMqttTlsDeviceCert.setVisible(False)
-    sysMqttTlsDeviceCert.setDescription("TLS Device Certificate Name")
-    sysMqttTlsDeviceCert.setDefaultValue("")
-    sysMqttTlsDeviceCert.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_AZURE_ENABLE_TLS"])
-
-    sysMqttTlsDeviceKey = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_DEVICE_KEY", sysMqttAzureEnableTls)
-    sysMqttTlsDeviceKey.setLabel("Device Key")
-    sysMqttTlsDeviceKey.setHelp(mqtt_helpkeyword)
-    sysMqttTlsDeviceKey.setVisible(False)
-    sysMqttTlsDeviceKey.setDescription("TLS Device Key")
-    sysMqttTlsDeviceKey.setDefaultValue("")
-    sysMqttTlsDeviceKey.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_AZURE_ENABLE_TLS"])  
-
-    sysMqttTlsDeviceKeyPassword = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_DEVICE_KEY_PSK", sysMqttAzureEnableTls)
-    sysMqttTlsDeviceKeyPassword.setLabel("Device Key Password")
-    sysMqttTlsDeviceKeyPassword.setHelp(mqtt_helpkeyword)
-    sysMqttTlsDeviceKeyPassword.setVisible(False)
-    sysMqttTlsDeviceKeyPassword.setDescription("TLS Device Key Password")
-    sysMqttTlsDeviceKeyPassword.setDefaultValue("")
-    sysMqttTlsDeviceKeyPassword.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_AZURE_ENABLE_TLS"]) 
-    
-    sysMqttTlsServerName = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_TLS_SERVER_NAME", sysMqttAzureEnableTls)
-    sysMqttTlsServerName.setLabel("Server Name")
-    sysMqttTlsServerName.setHelp(mqtt_helpkeyword)
-    sysMqttTlsServerName.setVisible(False)
-    sysMqttTlsServerName.setDescription("TLS Server name")
-    sysMqttTlsServerName.setDefaultValue("")
-    sysMqttTlsServerName.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_AZURE_ENABLE_TLS"])
-
-    sysrnwfMqttTlsDomainNameverify = sysMQTTComponent.createBooleanSymbol("SYS_MQTT_AZURE_DOMAIN_NAME_VERIFY", sysMqttAzureEnableTls)
-    sysrnwfMqttTlsDomainNameverify.setLabel("Domain Name Verify")
-    sysrnwfMqttTlsDomainNameverify.setHelp(mqtt_helpkeyword)
-    sysrnwfMqttTlsDomainNameverify.setVisible(False)
-    sysrnwfMqttTlsDomainNameverify.setDefaultValue(False)
-    sysrnwfMqttTlsDomainNameverify.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_AZURE_ENABLE_TLS"])
-
-    
-    sysMqttTlsDomainName = sysMQTTComponent.createStringSymbol("SYS_RNWF_MQTT_TLS_DOMAIN_NAME", sysMqttAzureEnableTls)
-    sysMqttTlsDomainName.setLabel("Domain Name")
-    sysMqttTlsDomainName.setHelp(mqtt_helpkeyword)
-    sysMqttTlsDomainName.setVisible(False)
-    sysMqttTlsDomainName.setDescription("TLS Domain name")
-    sysMqttTlsDomainName.setDefaultValue("")
-    sysMqttTlsDomainName.setDependencies(sysMqttSubMenuVisible, ["SYS_MQTT_AZURE_ENABLE_TLS"])
 
     sysmqttadvancedconfigurations = sysMQTTComponent.createCommentSymbol("SYS_RNWF_ADV_CONF", None)
     sysmqttadvancedconfigurations.setLabel("Advanced Configurations ")
@@ -333,7 +419,7 @@ def instantiateComponent(sysMQTTComponent):
 
 
 		
-    ### WINCS02 Code #######
+    ### WINCS02 Code Generation#######
 
     sysrnwfmqttWincs02HeaderFile = sysMQTTComponent.createFileSymbol("SYS_RNWF_WINCS02_MQTT_HEADER", None)
     sysrnwfmqttWincs02HeaderFile.setSourcePath("system/Mqtt/templates/sys_wincs02_mqtt_service.h.ftl")
@@ -394,10 +480,10 @@ def instantiateComponent(sysMQTTComponent):
 def sysmqttTopicInstanceEnable(symbol, event):
     global sysmqttTopicNumPrev
     print("Start sysmqttTopicInstanceEnable")
-    if(event["id"] == "SYS_RNWF_MQTT_AZURE_SUBSCRIBE"):
-        mqttTopicEnable = Database.getSymbolValue("sysrnwfMqttAzureSubscribe","SYS_RNWF_MQTT_AZURE_SUBSCRIBE")
+    if(event["id"] == "SYS_RNWF_MQTT_SUBSCRIBE"):
+        mqttTopicEnable = Database.getSymbolValue("sysMqttRNWF","SYS_RNWF_MQTT_SUBSCRIBE")
         fileIndex = int(symbol.getID().strip("SYS_RNWF_MQTT_SUB_TOPIC"))
-        print("File Slot " + str(fileIndex))
+        print("Index  " + str(fileIndex))
         print(sysmqttTopicNumPrev)
         if(mqttTopicEnable == True):
             if(fileIndex < sysmqttTopicNumPrev ):
@@ -429,40 +515,28 @@ def sysmqttTopicInstanceEnable(symbol, event):
 
 
 def sysrnwf02mqttFilesEnable(symbol, event):
-    print("mqtt sysrnwfwifirnwf02FilesEnable")
-    if(Database.getComponentByID("sysWifiRNWF") == None):
-        print("mqtt NONE  sysrnwfwifiRnwf02FilesEnable1")
+    print("RNWF02 Files : mqtt sysrnwfwifirnwf02FilesEnable")
 
-    host = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_HOST")
     device = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_WIFI_DEVICE")
     interface = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_INTERFACE_MODE")
 
-    if ((host == "SAME54X-pro") and (device == "RNWF02") and (interface== "UART")):
-        print("mqtt File : Host and Device are SUPPORTED - RN")
+    if device == "RNWF02" and interface== "UART":
         symbol.setEnabled(True)
     else:
-        print("mqtt File : Host and Device are NOT SUPPORTED")
+        symbol.setEnabled(False)
 
 
 def syswincs02mqttFilesEnable(symbol, event):
-    print("mqtt sysrnwfwifiWincs02FilesEnable")
-    # data = Database.getComponentByID("sysWifiRNWFComponent")
-    if(Database.getComponentByID("sysWifiRNWF") == None):
-        print("mqtt NONE  sysrnwfwifiWincs02FilesEnable")
+    print("WINCS02 Files :mqtt sysrnwfwifiWincs02FilesEnable")
 
-    host = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_HOST")
     device = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_WIFI_DEVICE")
     interface = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_INTERFACE_MODE")
+    sam9x75Device = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_SAM_9x75_WIFI_DEVICE")
 
-    print("mqtt host      : "+str(host))
-    print("mqtt device    : "+str(device))
-    print("mqtt interface : "+str(interface))
-
-    if ((host == "SAME54X-pro") and (device == "WINCS02") and (interface == "SPI")):
-        print("mqtt : Host and Device are SUPPORTED - NC")
+    if (device == "WINCS02" or sam9x75Device == "WINCS02") and interface == "SPI":
         symbol.setEnabled(True)
     else:
-        print("mqtt : Host and Device are NOT SUPPORTED")
+        symbol.setEnabled(False)
 
 def sysrnwfmqttRnwf11FilesEnable(symbol, event):
     print("Mqtt sysrnwfmqttrnwf11FilesEnable")
@@ -485,6 +559,14 @@ def finalizeComponent(sysMQTTComponent):
     if(Database.getSymbolValue("sysWifiRNWF", "SYS_RNWF_MQTT_ENABLE") == False):
         print("Setting SYS_RNWF_WIFI_SER_PROV_ENABLE.")
         Database.setSymbolValue("sysWifiRNWF", "SYS_RNWF_MQTT_ENABLE", True)
+
+def sysMqttPubMsgPropMenuVisible(symbol, event):
+    mqttVersion = Database.getSymbolValue("sysMqttRNWF","SYS_RNWF_MQTT_VERSION")
+    if mqttVersion == "v5":
+        symbol.setVisible(True)
+    else:
+        symbol.setVisible(False)
+
 
 
 def genAppCode(symbol, event):

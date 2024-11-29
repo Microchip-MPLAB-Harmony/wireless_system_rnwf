@@ -60,13 +60,18 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 /* Section: File Scope or Global Data                                         */
 /* ************************************************************************** */
 /* ************************************************************************** */
-static SYS_WINCS_NET_SOCK_CALLBACK_t g_SocketCallBackHandler[SYS_WINCS_NET_SOCK_SERVICE_CB_MAX];
 
+//    Array to store socket callback handlers.
+static SYS_WINCS_NET_SOCK_CALLBACK_t  g_SocketCallBackHandler[SYS_WINCS_NET_SOCK_SERVICE_CB_MAX];
+
+//    Variable to store the DHCP callback handler.
 static SYS_WINCS_NET_DHCP_CALLBACK_t  g_DHCPCallBackHandler;
 
-static SYS_WINCS_NET_CID_TYPE g_connIDs[SYS_WINCS_NET_NUM_CONN_IDS];
+//    Array to store connection IDs.
+static SYS_WINCS_NET_CID_TYPE         g_connIDs[SYS_WINCS_NET_NUM_CONN_IDS];
 
-static WDRV_WINC_TLS_HANDLE g_tlsHandle = WDRV_WINC_TLS_INVALID_HANDLE;
+//    Variable to store the TLS handle.
+static WDRV_WINC_TLS_HANDLE           g_tlsHandle = WDRV_WINC_TLS_INVALID_HANDLE;
 
 
 /* ************************************************************************** */
@@ -74,7 +79,28 @@ static WDRV_WINC_TLS_HANDLE g_tlsHandle = WDRV_WINC_TLS_INVALID_HANDLE;
 // Section: Local Functions                                                   */
 /* ************************************************************************** */
 /* ************************************************************************** */
-
+/**
+ * @brief Add a Connection ID
+ *
+ * Summary:
+ *    This function adds a new connection ID to the global connection ID array.
+ *
+ * Description:
+ *    This function searches for an available slot in the global connection ID array,
+ *    initializes it with the provided parameters, and returns a pointer to the newly
+ *    added connection ID structure.
+ *
+ * Parameters:
+ *    @param sockfd          Socket file descriptor.
+ *    @param socketType      Type of the socket.
+ *    @param pLocalBindAddr  Pointer to the local bind address (can be NULL).
+ *    @param pRemoteBindAddr Pointer to the remote bind address (can be NULL).
+ *    @param httpChkSum      Flag indicating whether HTTP checksum is enabled.
+ *
+ * Returns:
+ *    SYS_WINCS_NET_CID_TYPE*  Pointer to the newly added connection ID structure,
+ *                             or NULL if no available slot was found.
+ */
 static SYS_WINCS_NET_CID_TYPE* SYS_WINCS_NET_ConnIDAdd
 (
     int sockfd, 
@@ -86,14 +112,14 @@ static SYS_WINCS_NET_CID_TYPE* SYS_WINCS_NET_ConnIDAdd
 {
     uint8_t i;
 
-    for (i=0; i<SYS_WINCS_NET_NUM_CONN_IDS; i++)
+    for (i = 0; i < SYS_WINCS_NET_NUM_CONN_IDS; i++)
     {
         if (false == g_connIDs[i].inUse)
         {
             memset(&g_connIDs[i], 0, sizeof(SYS_WINCS_NET_CID_TYPE));
 
             g_connIDs[i].inUse            = true;
-            g_connIDs[i].id               = i+1;
+            g_connIDs[i].id               = i + 1;
             g_connIDs[i].sockfd           = sockfd;
             g_connIDs[i].socketType       = socketType;
             g_connIDs[i].doHTTPChecksum   = httpChkSum;
@@ -107,9 +133,11 @@ static SYS_WINCS_NET_CID_TYPE* SYS_WINCS_NET_ConnIDAdd
             {
                 memcpy(&g_connIDs[i].remoteBindAddress, pRemoteBindAddr, sizeof(SYS_WINCS_NET_SOCK_ADDR_TYPE));
             }
+
             #ifdef SYS_WINCS_NET_DEBUG_LOGS
             SYS_WINCS_NET_DBG_MSG("Adding CID %d\r\n", g_connIDs[i].id);
             #endif
+
             return &g_connIDs[i];
         }
     }
@@ -117,6 +145,24 @@ static SYS_WINCS_NET_CID_TYPE* SYS_WINCS_NET_ConnIDAdd
     return NULL;
 }
 
+/**
+ * @brief Find Connection ID by Socket
+ *
+ * Summary:
+ *    This function finds a connection ID in the global connection ID array by socket file descriptor.
+ *
+ * Description:
+ *    This function searches the global connection ID array for a connection ID that matches
+ *    the provided socket file descriptor and returns a pointer to the corresponding connection
+ *    ID structure.
+ *
+ * Parameters:
+ *    @param sockfd  Socket file descriptor.
+ *
+ * Returns:
+ *    SYS_WINCS_NET_CID_TYPE*  Pointer to the found connection ID structure,
+ *                             or NULL if no matching connection ID was found.
+ */
 static SYS_WINCS_NET_CID_TYPE* SYS_WINCS_NET_ConnIDFindBySocket
 (
     int sockfd
@@ -124,7 +170,7 @@ static SYS_WINCS_NET_CID_TYPE* SYS_WINCS_NET_ConnIDFindBySocket
 {
     uint8_t i;
 
-    for (i=0; i<SYS_WINCS_NET_NUM_CONN_IDS; i++)
+    for (i = 0; i < SYS_WINCS_NET_NUM_CONN_IDS; i++)
     {
         if ((true == g_connIDs[i].inUse) && (g_connIDs[i].sockfd == sockfd))
         {
@@ -135,7 +181,23 @@ static SYS_WINCS_NET_CID_TYPE* SYS_WINCS_NET_ConnIDFindBySocket
     return NULL;
 }
 
-
+/**
+ * @brief Delete Connection ID by Socket
+ *
+ * Summary:
+ *    This function deletes a connection ID from the global connection ID array by socket file descriptor.
+ *
+ * Description:
+ *    This function searches the global connection ID array for a connection ID that matches
+ *    the provided socket file descriptor, clears the corresponding entry, and returns a flag
+ *    indicating whether the deletion was successful.
+ *
+ * Parameters:
+ *    @param sockfd  Socket file descriptor.
+ *
+ * Returns:
+ *    bool  True if the connection ID was successfully deleted, false otherwise.
+ */
 static bool SYS_WINCS_NET_ConnIDDeleteBySocket
 (
     int sockfd
@@ -143,7 +205,7 @@ static bool SYS_WINCS_NET_ConnIDDeleteBySocket
 {
     uint8_t i;
 
-    for (i=0; i<SYS_WINCS_NET_NUM_CONN_IDS; i++)
+    for (i = 0; i < SYS_WINCS_NET_NUM_CONN_IDS; i++)
     {
         if ((true == g_connIDs[i].inUse) && (g_connIDs[i].sockfd == sockfd))
         {
@@ -151,8 +213,11 @@ static bool SYS_WINCS_NET_ConnIDDeleteBySocket
             return true;
         }
     }
+
     return false;
 }
+
+
 
 #ifdef SYS_WINCS_NET_DEBUG_LOGS
 static void SYS_WINCS_NET_connIDPrint
@@ -170,7 +235,7 @@ static void SYS_WINCS_NET_connIDPrint
         if (true == g_connIDs[i].inUse)
         {
             in_port_t port;
-            char addrStr[64];
+            char addrStr[64] = {""};
 
             if (0 != (g_connIDs[i].socketType & SYS_WINCS_NET_SKT_SERVER))
             {
@@ -202,7 +267,24 @@ static void SYS_WINCS_NET_connIDPrint
 }
 #endif
 
-
+/**
+ * @brief Socket Event Callback
+ *
+ * Summary:
+ *    This function is a callback that handles socket events.
+ *
+ * Description:
+ *    This function is called when a socket event occurs. It processes the event
+ *    based on the event type and the associated socket file descriptor.
+ *
+ * Parameters:
+ *    @param context  User-defined context information.
+ *    @param sockfd   Socket file descriptor associated with the event.
+ *    @param event    Type of the socket event.
+ *
+ * Returns:
+ *    None.
+ */
             
 static void SYS_WINCS_NET_SocketEventCallback
 (
@@ -255,7 +337,7 @@ static void SYS_WINCS_NET_SocketEventCallback
 
                 if (SYS_WINCS_NET_SKT_STREAM == (pConnID->socketType & SYS_WINCS_NET_SKT_STREAM))
                 {
-                    listen(sockfd, 0);
+                    listen(sockfd, SYS_WINCS_NET_NO_OF_CLIENT_SOCKETS);
                 }
 
                 if (SYS_WINCS_NET_SKT_DATAGRAM == (pConnID->socketType & SYS_WINCS_NET_SKT_DATAGRAM))
@@ -312,7 +394,14 @@ static void SYS_WINCS_NET_SocketEventCallback
                 {
                     if(SYS_WINCS_NET_SKT_ENCRYPTED == (pConnID->socketType & SYS_WINCS_NET_SKT_ENCRYPTED))
                     {
-                        setsockopt(sockfd, IPPROTO_TLS, TLS_CONF_IDX, &g_tlsHandle, sizeof(g_tlsHandle));
+                        if(0 == setsockopt(sockfd, IPPROTO_TLS, TLS_CONF_IDX, &g_tlsHandle, sizeof(int)))
+                        {
+                            SYS_WINCS_NET_DBG_MSG("setsockopt SUCCESS\r\n");
+                        }
+                        else
+                        {
+                            SYS_WINCS_NET_DBG_MSG("setsockopt FAIL  errno : %d\r\n",errno);
+                        }
                     }
                     errno = 0;
 
@@ -415,6 +504,7 @@ static void SYS_WINCS_NET_SocketEventCallback
         
         case WINC_SOCKET_EVENT_SEND:
         {
+             net_cb_func(sockfd, SYS_WINCS_NET_SOCK_EVENT_SEND_COMPLETE, NULL);
             #ifdef SYS_WINCS_NET_DEBUG_LOGS
             SYS_WINCS_NET_DBG_MSG("Socket %d send completed\r\n", sockfd);
             #endif
@@ -446,8 +536,24 @@ static void SYS_WINCS_NET_SocketEventCallback
     }
 }
 
-
-
+/**
+ * @brief DHCP Server Event Callback
+ *
+ * Summary:
+ *    This function is a callback that handles DHCP server events.
+ *
+ * Description:
+ *    This function is called when a DHCP server event occurs. It processes the event
+ *    based on the event type and the associated event information.
+ *
+ * Parameters:
+ *    @param handle      Handle to the driver instance.
+ *    @param eventType   Type of the DHCP server event.
+ *    @param pEventInfo  Pointer to the event information.
+ *
+ * Returns:
+ *    None.
+ */
 
 static void SYS_WINCS_NET_ApDhcpsEventCallback
 (
@@ -476,20 +582,42 @@ static void SYS_WINCS_NET_ApDhcpsEventCallback
 }
 
 
-SYS_WINCS_RESULT_t SYS_WINCS_NET_CreateSocket
+/**
+ * @brief Create a Network Socket
+ *
+ * Summary:
+ *    This function creates a network socket based on the provided configuration.
+ *
+ * Description:
+ *    This function takes a pointer to a socket configuration structure and
+ *    initializes a network socket accordingly. The function returns a result
+ *    indicating the success or failure of the socket creation process.
+ *
+ * Parameters:
+ *    @param socketCfg  Pointer to the socket configuration structure.
+ *
+ * Returns:
+ *    SYS_WINCS_RESULT_t  The result of the socket creation process.
+ *                        Possible values include:
+ *                        - SYS_WINCS_RESULT_SUCCESS: Socket created successfully.
+ *                        - SYS_WINCS_RESULT_FAILURE: Failed to create socket.
+ */
+
+static SYS_WINCS_RESULT_t SYS_WINCS_NET_CreateSocket
 (
-    SYS_WINCS_NET_SOCKET_t *new_socket
+    SYS_WINCS_NET_SOCKET_t *socketCfg
 )
 {
-    int domain = AF_UNSPEC,socket_id=-1;
+    int domain = AF_UNSPEC;
     bool httpChkSum = false;
     SYS_WINCS_NET_SOCK_ADDR_TYPE addr;
     SYS_WINCS_NET_SOCKET_TYPE socketType = SYS_WINCS_NET_SKT_UNENCRYPTED;
-    WDRV_WINC_IP_MULTI_ADDRESS IPAddress;
+    static WDRV_WINC_IP_MULTI_ADDRESS IPAddress;
+
     SYS_WINCS_RESULT_t result = SYS_WINCS_FAIL;
            
     /* socket type : TLS or Non TLS*/
-    if(new_socket->tls_conf)
+    if(socketCfg->tlsEnable)
     {
         socketType &= ~SYS_WINCS_NET_SKT_UNENCRYPTED;
         socketType |= SYS_WINCS_NET_SKT_ENCRYPTED;
@@ -500,32 +628,36 @@ SYS_WINCS_RESULT_t SYS_WINCS_NET_CreateSocket
     }
     
     /* SOcket type : TCP or UDP */
-    if(new_socket->sock_type == SYS_WINCS_SOCK_TCP)
+    if(socketCfg->sockType == SYS_WINCS_NET_SOCK_TYPE_TCP)
     {
         socketType |= SYS_WINCS_NET_SKT_STREAM;
     }
-    else if (new_socket->sock_type == SYS_WINCS_SOCK_UDP)
+    else if (socketCfg->sockType == SYS_WINCS_NET_SOCK_TYPE_UDP)
     {
         socketType |= SYS_WINCS_NET_SKT_DATAGRAM;
     }
     
     /* SOcket type :Client or Server  */
-    if(new_socket->bind_type == SYS_WINCS_BIND_REMOTE) //client
+    if(socketCfg->bindType == SYS_WINCS_NET_BIND_REMOTE) //client
     {
         socketType |= SYS_WINCS_NET_SKT_CLIENT;
     }
-    else if (new_socket->bind_type == SYS_WINCS_BIND_LOCAL)//server
+    else if (socketCfg->bindType == SYS_WINCS_NET_BIND_LOCAL)//server
     {
         socketType |= SYS_WINCS_NET_SKT_SERVER;
     }
-    
+    else if (socketCfg->bindType == SYS_WINCS_NET_BIND_MCAST)//multicast
+    {
+        socketType |= SYS_WINCS_NET_SKT_MULTICAST;
+    }
+
     /* Addr type : IPV4 or IPV6*/
-    if(new_socket->ip_type == SYS_WINCS_NET_IPV4)
+    if(socketCfg->ipType == SYS_WINCS_NET_IPV4)
     {
         domain = AF_INET;
-        if(new_socket->sock_addr != NULL)
+        if(socketCfg->sockAddr != NULL)
         {
-            if (1 != inet_pton(AF_INET, new_socket->sock_addr, &IPAddress.v4))
+            if (1 != inet_pton(AF_INET, socketCfg->sockAddr, &IPAddress.v4))
             {
                 return result;
             }
@@ -538,9 +670,9 @@ SYS_WINCS_RESULT_t SYS_WINCS_NET_CreateSocket
     else
     {
         domain = AF_INET6;
-        if(new_socket->sock_addr != NULL)
+        if(socketCfg->sockAddr != NULL)
         {
-            if(1 != inet_pton(AF_INET6, new_socket->sock_addr, &IPAddress.v6))
+            if(1 != inet_pton(AF_INET6, socketCfg->sockAddr, &IPAddress.v6))
             {
                 return result;
             }
@@ -551,23 +683,23 @@ SYS_WINCS_RESULT_t SYS_WINCS_NET_CreateSocket
     }
     
     /* Create TCP or UDP socket*/
-    if(new_socket->sock_type == SYS_WINCS_SOCK_TCP)
+    if(socketCfg->sockType == SYS_WINCS_NET_SOCK_TYPE_TCP)
     {
-        if(new_socket->tls_conf)
+        if(socketCfg->tlsEnable)
         {
-            socket_id = socket(domain, SOCK_STREAM, IPPROTO_TLS);
+            socketCfg->sockID = socket(domain, SOCK_STREAM, IPPROTO_TLS);
         }
         else
         {
-            socket_id = socket(domain, SOCK_STREAM, IPPROTO_TCP);
+            socketCfg->sockID = socket(domain, SOCK_STREAM, IPPROTO_TCP);
         }
     }
-    else if(new_socket->sock_type == SYS_WINCS_SOCK_UDP)
+    else if(socketCfg->sockType == SYS_WINCS_NET_SOCK_TYPE_UDP)
     {
-        socket_id = socket(domain, SOCK_DGRAM, IPPROTO_UDP);
+        socketCfg->sockID = socket(domain, SOCK_DGRAM, IPPROTO_UDP);
     }
     
-    if (socket_id < 0)
+    if (socketCfg->sockID < 0)
     {
         return SYS_WINCS_FAIL;
     }
@@ -577,13 +709,13 @@ SYS_WINCS_RESULT_t SYS_WINCS_NET_CreateSocket
         if (0 == IPAddress.v4.Val)
         {
             addr.v4.sin_family      = domain;
-            addr.v4.sin_port        = htons(new_socket->sock_port);
+            addr.v4.sin_port        = htons(socketCfg->sockPort);
             addr.v4.sin_addr.s_addr = htonl(INADDR_ANY);
         }
         else
         {
             addr.v4.sin_family      = domain;
-            addr.v4.sin_port        = htons(new_socket->sock_port);
+            addr.v4.sin_port        = htons(socketCfg->sockPort);
             addr.v4.sin_addr.s_addr = IPAddress.v4.Val;
         }
     }
@@ -592,285 +724,36 @@ SYS_WINCS_RESULT_t SYS_WINCS_NET_CreateSocket
         if (0 == memcmp(&IPAddress.v6, &in6addr_any, sizeof(in6addr_any)))
         {
             addr.v6.sin6_family = AF_INET6;
-            addr.v6.sin6_port   = htons(new_socket->sock_port);
+            addr.v6.sin6_port   = htons(socketCfg->sockPort);
             memcpy(&addr.v6.sin6_addr, &in6addr_any, sizeof(in6addr_any));
         }
         else
         {
             addr.v6.sin6_family = AF_INET6;
-            addr.v6.sin6_port   = htons(new_socket->sock_port);
+            addr.v6.sin6_port   = htons(socketCfg->sockPort);
             memcpy(&addr.v6.sin6_addr, &IPAddress.v6, sizeof(IPAddress.v6));
         }
     }
     
-    if (NULL == SYS_WINCS_NET_ConnIDAdd(socket_id, socketType, NULL, &addr, httpChkSum))
+    /* SOcket type :Client or Server  */
+    if(socketCfg->bindType == SYS_WINCS_NET_BIND_REMOTE) //client
     {
-        shutdown(socket_id, SHUT_RDWR);
-        return SYS_WINCS_FAIL;
+        if (NULL == SYS_WINCS_NET_ConnIDAdd(socketCfg->sockID, socketType, NULL, &addr, httpChkSum))
+        {
+            shutdown(socketCfg->sockID, SHUT_RDWR);
+            return SYS_WINCS_FAIL;
+        }
+    }
+    else if (socketCfg->bindType == SYS_WINCS_NET_BIND_LOCAL)//server
+    {
+        if (NULL == SYS_WINCS_NET_ConnIDAdd(socketCfg->sockID, socketType, &addr, NULL, httpChkSum))
+        {
+            shutdown(socketCfg->sockID, SHUT_RDWR);
+            return SYS_WINCS_FAIL;
+        }
     }
     
     return SYS_WINCS_PASS;
-}
-
-
-
-
-/* This function is used for Network and Socket service Control*/
-SYS_WINCS_RESULT_t SYS_WINCS_NET_SockSrvCtrl
-( 
-    SYS_WINCS_NET_SOCK_SERVICE_t request, 
-    void *input
-)
-{
-    DRV_HANDLE wdrvHandle = DRV_HANDLE_INVALID;
-    
-    SYS_WINCS_WIFI_SrvCtrl(SYS_WINCS_WIFI_GET_DRV_HANDLE,&wdrvHandle);
-    WDRV_WINC_STATUS status = WDRV_WINC_STATUS_OK;
-    
-    switch(request)
-    {
-        /**<Enable the DHCP server */
-        case SYS_WINCS_NET_DHCP_SERVER_ENABLE:
-        {
-            if(input == NULL)
-                break;
-            
-            WDRV_WINC_IP_MULTI_ADDRESS apIPv4Addr;
-            WDRV_WINC_IPV4_ADDR dhcpsIPv4PoolAddr;
-            
-            const char **dhcps_cfg_list = input; 
-            
-            if (false == WDRV_WINC_UtilsStringToIPAddress(dhcps_cfg_list[0], &apIPv4Addr.v4))
-            {
-                return SYS_WINCS_FAIL;
-            }
-            
-            if (false == WDRV_WINC_UtilsStringToIPAddress(dhcps_cfg_list[1], &dhcpsIPv4PoolAddr))
-            {
-                return SYS_WINCS_FAIL;
-            }
-
-            status = WDRV_WINC_NetIfIPAddrSet(wdrvHandle, WDRV_WINC_NETIF_IDX_0, WDRV_WINC_IP_ADDRESS_TYPE_IPV4, &apIPv4Addr, 24);
-            if(status != WDRV_WINC_STATUS_OK)
-            {
-                break;
-            }
-
-            status = WDRV_WINC_DHCPSPoolAddressSet(wdrvHandle, WDRV_WINC_DHCPS_IDX_0, &dhcpsIPv4PoolAddr);
-            if(status != WDRV_WINC_STATUS_OK)
-            {
-                break;
-            } 
-
-            status = WDRV_WINC_DHCPSEnableSet(wdrvHandle, WDRV_WINC_DHCPS_IDX_0, true, SYS_WINCS_NET_ApDhcpsEventCallback);
-            if(status != WDRV_WINC_STATUS_OK)
-            {
-                break;
-            }
-            
-            break;
-        }
-	
-        /**<Disable the DHCP server */ 
-        case SYS_WINCS_NET_DHCP_SERVER_DISABLE:
-        {
-            status =  WDRV_WINC_DHCPSEnableSet(wdrvHandle, WDRV_WINC_DHCPS_IDX_0, false, NULL);
-            break;
-        }
-	
-        /**<Open TCP Socket*/ 
-        case SYS_WINCS_NET_SOCK_TCP_OPEN: 
-        {  
-            SYS_WINCS_NET_SOCKET_t *new_socket=(SYS_WINCS_NET_SOCKET_t*)(input); 
-            
-            switch(new_socket->bind_type)
-            {
-                case SYS_WINCS_BIND_REMOTE:
-                {
-                    SYS_WINCS_NET_CreateSocket(new_socket);
-                    break;
-                }
-                
-                case SYS_WINCS_BIND_LOCAL:
-                {
-                    if(new_socket->sock_type == SYS_WINCS_SOCK_UDP)
-                    {
-                        SYS_WINCS_NET_CreateSocket(new_socket);
-                        break;
-                    }
-                    int domain,socket_id;
-                    bool httpChkSum;
-                    SYS_WINCS_NET_SOCK_ADDR_TYPE addr;
-                    SYS_WINCS_NET_SOCKET_TYPE socketType;
-                    
-                    if(new_socket->tls_conf)
-                    {
-                        socketType = SYS_WINCS_NET_SKT_ENCRYPTED;
-                    }
-                    else
-                    {
-                        socketType = SYS_WINCS_NET_SKT_UNENCRYPTED;
-                    }
-                    
-                    socketType |= (SYS_WINCS_NET_SKT_STREAM | SYS_WINCS_NET_SKT_SERVER);
-                    domain = AF_INET;
-                    WDRV_WINC_SocketRegisterEventCallback(wdrvHandle, &SYS_WINCS_NET_SocketEventCallback);
-                    
-                    socket_id = socket(domain, SOCK_STREAM,  IPPROTO_TCP);
-                    
-                    if(new_socket->ip_type == SYS_WINCS_NET_IPV4)
-                    {
-                        addr.v4.sin_family      = domain;
-                        addr.v4.sin_port        = htons(new_socket->sock_port);
-                        addr.v4.sin_addr.s_addr = htonl(INADDR_ANY);
-                    }
-                    else
-                    {
-                        addr.v6.sin6_family = AF_INET6;
-                        addr.v6.sin6_port   = htons(new_socket->sock_port);
-                        memcpy(&addr.v6.sin6_addr, &in6addr_any, sizeof(in6addr_any));
-                    }
-            
-                    httpChkSum = false;
-                    #if SYS_RNWF_NET_DEBUG_PRINT
-                    SYS_CONSOLE_PRINT("socketType : %d\r\n",socketType);
-                    #endif
-                    
-
-                    if (NULL == SYS_WINCS_NET_ConnIDAdd(socket_id, socketType, &addr, NULL, httpChkSum))
-                    {
-                        SYS_CONSOLE_PRINT("ERROR: Failed to add CID\r\n");
-                        shutdown(socket_id, SHUT_RDWR);
-                        return SYS_WINCS_FAIL;
-                    }
-                    #ifdef SYS_RNWF_NET_DEBUG_PRINT
-                    SYS_RNWF_NET_ConnIDPrint();
-                    #endif
-                    break;
-                }
-                
-                case SYS_WINCS_BIND_MCAST:
-                {
-                    break;
-                }
-                
-                case SYS_WINCS_BIND_NONE:
-                {
-                    break;
-                }
-            }
-            break;
-        }
-            
-        /**<Close the socket*/    
-        case SYS_WINCS_NET_SOCK_CLOSE:
-        {
-            uint32_t socket = *((uint32_t *)input);
-            SYS_WINCS_NET_ConnIDDeleteBySocket(socket);
-            
-            if(0 == shutdown(socket, SHUT_RDWR))
-            {
-                status = WDRV_WINC_STATUS_OK;
-            }
-            break;
-        }
-	
-        case SYS_WINCS_NET_OPEN_TLS_CTX:
-        {
-            g_tlsHandle = WDRV_WINC_TLSCtxOpen(wdrvHandle);
-            *(WDRV_WINC_TLS_HANDLE *)input = g_tlsHandle;
-            break;
-        }
-        
-        case SYS_WINCS_NET_GET_TLS_CTX_HANDLE:
-        {
-            *(WDRV_WINC_TLS_HANDLE *)input = g_tlsHandle;
-            break;
-        }
-        
-        /**<Use the TLS configurations */
-        case SYS_WINCS_NET_TLS_CONFIG_1:
-        case SYS_WINCS_NET_TLS_CONFIG_2:
-        {
-            const char **tls_cfg_list = input;
-            if(tls_cfg_list[SYS_WINCS_NET_TLS_CA_CERT] != NULL)
-            {
-                status = WDRV_WINC_TLSCtxCACertFileSet(wdrvHandle, g_tlsHandle, tls_cfg_list[SYS_WINCS_NET_TLS_CA_CERT] , false);
-                if (WDRV_WINC_STATUS_OK != status)
-                {
-                    break;
-                }
-            }
-            
-            if(tls_cfg_list[SYS_WINCS_NET_TLS_CERT_NAME] != NULL)
-            {
-                status =  WDRV_WINC_TLSCtxCertFileSet(wdrvHandle, g_tlsHandle, tls_cfg_list[SYS_WINCS_NET_TLS_CERT_NAME]);
-                if (WDRV_WINC_STATUS_OK != status)
-                {
-                    break;
-                }
-            }
-            
-            if((tls_cfg_list[SYS_WINCS_NET_TLS_KEY_NAME] != NULL) && (tls_cfg_list[SYS_WINCS_NET_TLS_KEY_PWD] != NULL))
-            {
-                status =  WDRV_WINC_TLSCtxPrivKeySet(wdrvHandle, g_tlsHandle, tls_cfg_list[SYS_WINCS_NET_TLS_KEY_NAME], tls_cfg_list[SYS_WINCS_NET_TLS_KEY_PWD]);
-                if (WDRV_WINC_STATUS_OK != status)
-                {
-                    break;
-                }
-            }
-            
-            if(tls_cfg_list[SYS_WINCS_NET_TLS_SERVER_NAME] != NULL)
-            {
-                status =  WDRV_WINC_TLSCtxSNISet(wdrvHandle, g_tlsHandle, tls_cfg_list[SYS_WINCS_NET_TLS_SERVER_NAME]);
-                if (WDRV_WINC_STATUS_OK != status)
-                {
-                    break;
-                }
-            }
-            
-//            if(tls_cfg_list[SYS_WINCS_NET_TLS_DOMAIN_NAME] != NULL)
-            {
-                status =  WDRV_WINC_TLSCtxHostnameCheckSet(wdrvHandle, g_tlsHandle, tls_cfg_list[SYS_WINCS_NET_TLS_DOMAIN_NAME], false);
-                if (WDRV_WINC_STATUS_OK != status)
-                {
-                    break;
-                }
-            }
-     
-            break;
-        }
-
-        /**<Register application callback for sockets*/
-        case SYS_WINCS_NET_SOCK_SET_CALLBACK:
-	    {
-            g_SocketCallBackHandler[0] = (SYS_WINCS_NET_SOCK_CALLBACK_t)(input);                        
-            break;
-	    }    
-        
-        /**<Register application callback for sockets*/
-        case SYS_WINCS_NET_SOCK_SET_SRVC_CALLBACK:
-	    {
-            g_DHCPCallBackHandler  = (SYS_WINCS_NET_DHCP_CALLBACK_t)(input);  
-            break;
-	    }   
-	    
-        /*<Get Function callback data*/        
-        case SYS_WINCS_NET_SOCK_GET_CALLBACK:
-        {
-            SYS_WINCS_NET_SOCK_CALLBACK_t *socketCallBackHandler;
-            socketCallBackHandler = (SYS_WINCS_NET_SOCK_CALLBACK_t *) input;
-            socketCallBackHandler[0] = g_SocketCallBackHandler[0];
-            break;
-        }
-        
-        default:
-	    {
-            break;
-        }
-    } 
-
-    return SYS_WINCS_WIFI_GetWincsStatus(status);
 }
 
 
@@ -891,7 +774,9 @@ SYS_WINCS_RESULT_t SYS_WINCS_NET_TcpSockWrite
     sent_data_len = send(socket, input, length, 0);
     if (-1 == sent_data_len)
     {
+        #ifdef SYS_WINCS_NET_DEBUG_LOGS
         SYS_WINCS_NET_DBG_MSG("ERROR: Failed to send to socket %d (%d)\r\n", socket, errno);
+        #endif
         result = SYS_WINCS_FAIL;
     }
     return result;
@@ -913,8 +798,10 @@ int16_t SYS_WINCS_NET_SockRead
     {
         if ((EWOULDBLOCK != errno) && (EAGAIN != errno))
         {
+            #ifdef SYS_WINCS_NET_DEBUG_LOGS
             SYS_WINCS_NET_DBG_MSG("Socket recv error %d %d\r\n",socket, errno);
             SYS_WINCS_NET_ConnIDDeleteBySocket(socket);
+            #endif
         }
     }
     return recvd_data_len;
@@ -979,10 +866,198 @@ SYS_WINCS_RESULT_t SYS_WINCS_NET_UdpSockWrite
     
     if (-1 == sendto(socket, input, length, 0, (struct sockaddr*)&ip_addr, sizeof(ip_addr)))
     {
+        #ifdef SYS_WINCS_NET_DEBUG_LOGS
         SYS_WINCS_NET_DBG_MSG("ERROR: Failed to send to socket %d (%d)\r\n", socket, errno);
+        #endif
         return result;
     }
     return SYS_WINCS_PASS;
+}
+
+
+
+/* This function is used for Network and Socket service Control*/
+SYS_WINCS_RESULT_t SYS_WINCS_NET_SockSrvCtrl
+( 
+    SYS_WINCS_NET_SOCK_SERVICE_t request, 
+    SYS_WINCS_WIFI_HANDLE_t netHandle
+)
+{
+    DRV_HANDLE wdrvHandle = DRV_HANDLE_INVALID;
+    
+    SYS_WINCS_WIFI_SrvCtrl(SYS_WINCS_WIFI_GET_DRV_HANDLE,&wdrvHandle);
+    WDRV_WINC_STATUS status = WDRV_WINC_STATUS_OK;
+    
+    switch(request)
+    {
+        /**<Enable the DHCP server */
+        case SYS_WINCS_NET_DHCP_SERVER_ENABLE:
+        {
+            if(netHandle == NULL)
+                break;
+            
+            WDRV_WINC_IP_MULTI_ADDRESS apIPv4Addr;
+            WDRV_WINC_IPV4_ADDR dhcpsIPv4PoolAddr;
+            
+            const char **dhcps_cfg_list = netHandle; 
+            
+            if (false == WDRV_WINC_UtilsStringToIPAddress(dhcps_cfg_list[0], &apIPv4Addr.v4))
+            {
+                return SYS_WINCS_FAIL;
+            }
+            
+            if (false == WDRV_WINC_UtilsStringToIPAddress(dhcps_cfg_list[1], &dhcpsIPv4PoolAddr))
+            {
+                return SYS_WINCS_FAIL;
+            }
+
+            status = WDRV_WINC_NetIfIPAddrSet(wdrvHandle, WDRV_WINC_NETIF_IDX_0, WDRV_WINC_IP_ADDRESS_TYPE_IPV4, &apIPv4Addr, 24);
+            if(status != WDRV_WINC_STATUS_OK)
+            {
+                return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+            }
+
+            status = WDRV_WINC_DHCPSPoolAddressSet(wdrvHandle, WDRV_WINC_DHCPS_IDX_0, &dhcpsIPv4PoolAddr);
+            if(status != WDRV_WINC_STATUS_OK)
+            {
+                return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+            } 
+
+            status = WDRV_WINC_DHCPSEnableSet(wdrvHandle, WDRV_WINC_DHCPS_IDX_0, true, SYS_WINCS_NET_ApDhcpsEventCallback);
+            if(status != WDRV_WINC_STATUS_OK)
+            {
+                return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+            }
+            
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+        }
+	
+        /**<Disable the DHCP server */ 
+        case SYS_WINCS_NET_DHCP_SERVER_DISABLE:
+        {
+            status =  WDRV_WINC_DHCPSEnableSet(wdrvHandle, WDRV_WINC_DHCPS_IDX_0, false, NULL);
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+        }
+	
+        /**<Open TCP Socket*/ 
+        case SYS_WINCS_NET_SOCK_TCP_OPEN: 
+        {  
+            WDRV_WINC_SocketRegisterEventCallback(wdrvHandle, &SYS_WINCS_NET_SocketEventCallback);
+            if (SYS_WINCS_PASS != SYS_WINCS_NET_CreateSocket((SYS_WINCS_NET_SOCKET_t*)(netHandle)))
+            {
+                return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_INVALID_ARG, __FUNCTION__, __LINE__);
+            }
+            return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_OK, __FUNCTION__, __LINE__);  
+        }
+            
+        /**<Close the socket*/    
+        case SYS_WINCS_NET_SOCK_CLOSE:
+        {
+            uint32_t socket = *((uint32_t *)netHandle);
+            SYS_WINCS_NET_ConnIDDeleteBySocket(socket);
+            
+            if(0 == shutdown(socket, SHUT_RDWR))
+            {
+                return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+            }
+            return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_OK, __FUNCTION__, __LINE__); 
+        }
+	
+        case SYS_WINCS_NET_OPEN_TLS_CTX:
+        {
+            g_tlsHandle = WDRV_WINC_TLSCtxOpen(wdrvHandle);
+
+            return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_OK, __FUNCTION__, __LINE__); 
+        }
+        
+        case SYS_WINCS_NET_GET_TLS_CTX_HANDLE:
+        {
+            *(WDRV_WINC_TLS_HANDLE *)netHandle = g_tlsHandle;
+            return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_OK, __FUNCTION__, __LINE__); 
+        }
+        
+        /**<Use the TLS configurations */
+        case SYS_WINCS_NET_TLS_CONFIG:
+        {
+            SYS_WINCS_NET_TLS_SOC_PARAMS *tls_cfg_list = netHandle;
+            if(tls_cfg_list->tlsCACertificate != NULL)
+            {
+                status = WDRV_WINC_TLSCtxCACertFileSet(wdrvHandle, g_tlsHandle, tls_cfg_list->tlsCACertificate , tls_cfg_list->tlsPeerAuth);
+                if (WDRV_WINC_STATUS_OK != status)
+                {
+                    return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+                }
+            }
+            
+            if(tls_cfg_list->tlsCertificate != NULL)
+            {
+                status =  WDRV_WINC_TLSCtxCertFileSet(wdrvHandle, g_tlsHandle, tls_cfg_list->tlsCertificate);
+                if (WDRV_WINC_STATUS_OK != status)
+                {
+                    return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+                }
+            }
+            
+            if((tls_cfg_list->tlsKeyName != NULL) && (tls_cfg_list->tlsKeyName != NULL))
+            {
+                status =  WDRV_WINC_TLSCtxPrivKeySet(wdrvHandle, g_tlsHandle, tls_cfg_list->tlsKeyName, tls_cfg_list->tlsKeyPassword);
+                if (WDRV_WINC_STATUS_OK != status)
+                {
+                    return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+                }
+            }
+            
+            if(tls_cfg_list->tlsServerName != NULL)
+            {
+                status =  WDRV_WINC_TLSCtxSNISet(wdrvHandle, g_tlsHandle, tls_cfg_list->tlsServerName);
+                if (WDRV_WINC_STATUS_OK != status)
+                {
+                    return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+                }
+            }
+            
+            if(tls_cfg_list->tlsDomainName != NULL)
+            {
+                status =  WDRV_WINC_TLSCtxHostnameCheckSet(wdrvHandle, g_tlsHandle, tls_cfg_list->tlsDomainName, tls_cfg_list->tlsDomainNameVerify);
+                if (WDRV_WINC_STATUS_OK != status)
+                {
+                    return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+                }
+            }
+     
+            return SYS_WINCS_WIFI_GetWincsStatus(status, __FUNCTION__, __LINE__);
+        }
+
+        /**<Register application callback for sockets*/
+        case SYS_WINCS_NET_SOCK_SET_CALLBACK:
+	    {
+            g_SocketCallBackHandler[0] = (SYS_WINCS_NET_SOCK_CALLBACK_t)(netHandle);                        
+            return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_OK, __FUNCTION__, __LINE__);
+	    }    
+        
+        /**<Register application callback for sockets*/
+        case SYS_WINCS_NET_SOCK_SET_SRVC_CALLBACK:
+	    {
+            g_DHCPCallBackHandler  = (SYS_WINCS_NET_DHCP_CALLBACK_t)(netHandle);  
+            return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_OK, __FUNCTION__, __LINE__);
+	    }   
+	    
+        /*<Get Function callback data*/        
+        case SYS_WINCS_NET_SOCK_GET_CALLBACK:
+        {
+            SYS_WINCS_NET_SOCK_CALLBACK_t *socketCallBackHandler;
+            socketCallBackHandler = (SYS_WINCS_NET_SOCK_CALLBACK_t *) netHandle;
+            socketCallBackHandler[0] = g_SocketCallBackHandler[0];
+            return SYS_WINCS_WIFI_GetWincsStatus(WDRV_WINC_STATUS_OK, __FUNCTION__, __LINE__);
+        }
+        
+        default:
+	    {
+            SYS_WINCS_NET_DBG_MSG("ERROR : Unknown Net Service Request\r\n");
+        }
+    } 
+
+    return SYS_WINCS_FAIL;
 }
 
 /* *****************************************************************************

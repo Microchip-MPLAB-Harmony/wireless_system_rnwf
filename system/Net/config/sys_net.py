@@ -27,7 +27,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 ################################################################################
 global net_helpkeyword
 
-sysrnwfnetMaxSockets = 2
+sysrnwfnetMaxSockets = 4
 sysrnwfnetSocketInstance = []
 sysrnwfnetSocketPrev = 1
 sysrnwfnetBind = [] 
@@ -162,7 +162,7 @@ def instantiateComponent(sysrnwfNetComponent):
         sysrnwfnetTlsDevKey[slot].setDefaultValue("")
         sysrnwfnetTlsDevKey[slot].setDependencies(sysnetSubMenuVisible, ["SYS_RNWF_NET_ENABLE_TLS"+str(slot)])
         
-        sysrnwfnetTlsDevKeyPwd.append(sysrnwfNetComponent.createStringSymbol("SYS_RNWD_NET_DEVICE_KEY_PWD"+str(slot), sysrnwfnetEnableTls[slot]))
+        sysrnwfnetTlsDevKeyPwd.append(sysrnwfNetComponent.createStringSymbol("SYS_RNWF_NET_DEVICE_KEY_PWD"+str(slot), sysrnwfnetEnableTls[slot]))
         sysrnwfnetTlsDevKeyPwd[slot].setLabel("Device Key Password")
         sysrnwfnetTlsDevKeyPwd[slot].setHelp(net_helpkeyword)
         sysrnwfnetTlsDevKeyPwd[slot].setVisible(False)
@@ -318,40 +318,30 @@ def instantiateComponent(sysrnwfNetComponent):
 #Set symbols of other components
 
 def sysrnwfnetRnwf02FilesEnable(symbol, event):
-    print("Net sysrnwfwifirnwf02FilesEnable")
-    if(Database.getComponentByID("sysWifiRNWF") == None):
-        print("Net1 NONE  sysrnwfwifirnwf02FilesEnable")
+    print("RNWF02 Files :Net sysrnwfwifirnwf02FilesEnable")
 
-    host = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_HOST")
     device = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_WIFI_DEVICE")
     interface = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_INTERFACE_MODE")
 
-    if ((host == "SAME54X-pro") and (device == "RNWF02") and (interface== "UART")):
-        print("Net File : Host and Device are SUPPORTED - RN")
+    if device == "RNWF02" and interface== "UART":
         symbol.setEnabled(True)
     else:
-        print("Net File : Host and Device are NOT SUPPORTED")
+        symbol.setEnabled(False)
 
 
 def sysrnwfnetWincs02FilesEnable(symbol, event):
-    print("Net1 sysrnwfnetWincs02FilesEnable")
-    # data = Database.getComponentByID("sysWifiRNWFComponent")
-    if(Database.getComponentByID("sysWifiRNWF") == None):
-        print("Net1 NONE  sysrnwfnetWincs02FilesEnable")
+    print("WINCS02 Files : Net sysrnwfnetWincs02FilesEnable")
 
     host = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_HOST")
     device = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_WIFI_DEVICE")
     interface = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_INTERFACE_MODE")
+    sam9x75Device = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_SAM_9x75_WIFI_DEVICE")
 
-    print("net host      : "+str(host))
-    print("net device    : "+str(device))
-    print("net interface : "+str(interface))
-
-    if ((host == "SAME54X-pro") and (device == "WINCS02") and (interface == "SPI")):
-        print("File : Host and Device are SUPPORTED - NC")
+    if (device == "WINCS02" or sam9x75Device == "WINCS02") and interface == "SPI":
         symbol.setEnabled(True)
     else:
-        print("File : Host and Device are NOT SUPPORTED")
+        symbol.setEnabled(False)
+
 
 def sysrnwfnetRnwf11FilesEnable(symbol, event):
     print("Net sysrnwfnetrnwf11FilesEnable")
@@ -426,5 +416,6 @@ def finalizeComponent(sysrnwfNetComponent):
     if(Database.getSymbolValue("sysWifiRNWF", "SYS_RNWF_NET_SER_ENABLE") == False):
         print("Setting SYS_RNWF_NET_SER_ENABLE.")
         Database.setSymbolValue("sysWifiRNWF", "SYS_RNWF_NET_SER_ENABLE", True)
+    
 
     

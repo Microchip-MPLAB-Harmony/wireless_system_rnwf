@@ -28,6 +28,8 @@
 global ota_helpkeyword
 
 ota_helpkeyword = "mcc_h3_RNWF_ota_system_service_configurations"
+
+sysrnwfnetMaxSockets = 2
 ################################################################################
 #### Business Logic ####
 ################################################################################
@@ -45,21 +47,30 @@ def instantiateComponent(sysrnwfOTARNWFComponent):
     #                           OTA main menu                        #
     #-------------------------------------------------------------------------#
  
-    sysrnwfOtaTunnel = sysrnwfOTARNWFComponent.createComboSymbol("SYS_RNWF_OTA_TUNNEL", None, ["TCP"])
-    sysrnwfOtaTunnel.setLabel("OTA Tunnel Selection ")
-    sysrnwfOtaTunnel.setHelp(ota_helpkeyword)
-    sysrnwfOtaTunnel.setDescription("Tunnel to receive the OTA server and Image details. Drop-down to select OTA Tunnel. Currently supports TCP only")
-    sysrnwfOtaTunnel.setVisible(True)
-    sysrnwfOtaTunnel.setDefaultValue("TCP")
+    sysrnwfOtaConfSoc = sysrnwfOTARNWFComponent.createIntegerSymbol("SYS_RNWF_OTA_CONF_SOC", None)
+    sysrnwfOtaConfSoc.setLabel("OTA Configuration Socket ")
+    sysrnwfOtaConfSoc.setHelp(ota_helpkeyword)
+    sysrnwfOtaConfSoc.setDescription("Socket to receive the OTA server and Image details")
+    sysrnwfOtaConfSoc.setVisible(True)
+    sysrnwfOtaConfSoc.setMin(0)
+    sysrnwfOtaConfSoc.setMax(sysrnwfnetMaxSockets)
+    sysrnwfOtaConfSoc.setDefaultValue(0)
 
-    sysrnwfOtaTunnelPort = sysrnwfOTARNWFComponent.createIntegerSymbol("SYS_RNWF_OTA_TUNNEL_PORT", None)
-    sysrnwfOtaTunnelPort.setLabel("OTA Tunnel Port")
-    sysrnwfOtaTunnelPort.setHelp(ota_helpkeyword)
-    sysrnwfOtaTunnelPort.setVisible(True)
-    sysrnwfOtaTunnelPort.setMin(1)
-    sysrnwfOtaTunnelPort.setMax(65535)
-    sysrnwfOtaTunnelPort.setDescription("OTA tunnel Port to receive OTA server details")
-    sysrnwfOtaTunnelPort.setDefaultValue(6666)
+    sysrnwfOtaServerSoc = sysrnwfOTARNWFComponent.createIntegerSymbol("SYS_RNWF_OTA_SERVER_SOC", None)
+    sysrnwfOtaServerSoc.setLabel("OTA Server Socket ")
+    sysrnwfOtaServerSoc.setHelp(ota_helpkeyword)
+    sysrnwfOtaServerSoc.setVisible(True)
+    sysrnwfOtaServerSoc.setMin(0)
+    sysrnwfOtaServerSoc.setMax(sysrnwfnetMaxSockets)
+    sysrnwfOtaServerSoc.setDescription("OTA Server Socket ")
+    sysrnwfOtaServerSoc.setDefaultValue(1)
+
+    sysrnwfOtaFlashAddr = sysrnwfOTARNWFComponent.createStringSymbol("SYS_RNWF_OTA_FLASH_ADDR", None)
+    sysrnwfOtaFlashAddr.setLabel("OTA FW Flash Address ")
+    sysrnwfOtaFlashAddr.setHelp(ota_helpkeyword)
+    sysrnwfOtaFlashAddr.setVisible(True)
+    sysrnwfOtaFlashAddr.setDescription("Enter the Flash Address of OTA image in device low : 0x60000000, high : 0x600F0000")
+    sysrnwfOtaFlashAddr.setDefaultValue("0x600F0000")
 
     sysrnwfotaadvancedconfigurations = sysrnwfOTARNWFComponent.createCommentSymbol("SYS_RNWF_OTA_ADV_CONF", None)
     sysrnwfotaadvancedconfigurations.setLabel("Advanced Configurations ")
@@ -71,7 +82,7 @@ def instantiateComponent(sysrnwfOTARNWFComponent):
     sysrnwfotadebuglogs.setDefaultValue(False)
     sysrnwfotadebuglogs.setDescription("Select to enable OTA service debug logs ")
 
-    sysrnwfOtaCallbackHandler = sysrnwfOTARNWFComponent.createStringSymbol("SYS_RNWF_OTA_CALLBACK_HANDLER", None)
+    sysrnwfOtaCallbackHandler = sysrnwfOTARNWFComponent.createStringSymbol("SYS_RNWF_OTA_CALLBACK_HANDLER", sysrnwfotaadvancedconfigurations)
     sysrnwfOtaCallbackHandler.setLabel("OTA Callback Handler")
     sysrnwfOtaCallbackHandler.setVisible(True)
     sysrnwfOtaCallbackHandler.setDescription("Configure callback function name to handle OTA service events")
@@ -101,6 +112,7 @@ def instantiateComponent(sysrnwfOTARNWFComponent):
     sysrnwfotaHeaderFile.setProjectPath("config/" + configName + "/system/ota/")
     sysrnwfotaHeaderFile.setType("HEADER")
     sysrnwfotaHeaderFile.setMarkup(True)
+    sysrnwfotaHeaderFile.setOverwrite(True)
     sysrnwfotaHeaderFile.setEnabled(False)
     sysrnwfotaHeaderFile.setDependencies(sysotaRnwf02FilesEnable, ["sysWifiRNWF.SYS_RNWF_OTA_SER_ENABLE"])
 
@@ -133,24 +145,20 @@ def instantiateComponent(sysrnwfOTARNWFComponent):
     sysrnwfotaSystemConfFile.setMarkup(True)
     sysrnwfotaSystemConfFile.setOverwrite(True)
     sysrnwfotaSystemConfFile.setEnabled(False)
-    sysrnwfotaSystemConfFile.setDependencies(sysotaRnwf02FilesEnable, ["sysWifiRNWF.SYS_RNWF_NET_SER_ENABLE"])
+    sysrnwfotaSystemConfFile.setDependencies(sysotaRnwf02FilesEnable, ["sysWifiRNWF.SYS_RNWF_OTA_SER_ENABLE"])
     ########### system header end #################
 
 #-----------------------------------------------------------------------------# 
 def sysotaRnwf02FilesEnable(symbol, event):
-    print("ota sysrnwfwifirnwf02FilesEnable")
-    if(Database.getComponentByID("sysWifiRNWF") == None):
-        print("OTA NONE  sysrnwfwifiRnwf02FilesEnable1")
+    print("RNWF02 Files : OTA  sysrnwfwifirnwf02FilesEnable")
 
-    host = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_HOST")
     device = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_WIFI_DEVICE")
     interface = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_INTERFACE_MODE")
 
-    if ((host == "SAME54X-pro") and (device == "RNWF02") and (interface== "UART")):
-        print("OTA File : Host and Device are SUPPORTED - RN")
+    if device == "RNWF02" and interface== "UART":
         symbol.setEnabled(True)
     else:
-        print("OTA File : Host and Device are NOT SUPPORTED")
+        symbol.setEnabled(False)
 
 def sysrnwfotaRnwf11FilesEnable(symbol, event):
     print("ota sysrnwfotarnwf11FilesEnable")
@@ -181,7 +189,7 @@ def finalizeComponent(sysrnwfOTARNWFComponent):
         print("Setting SYS_RNWF_OTA_SER_PROV_ENABLE.")
         Database.setSymbolValue("sysWifiRNWF", "SYS_RNWF_OTA_SER_ENABLE", True) 
 
-    if ((host == "SAME54X-pro") and (device == "RNWF02") and (interface== "UART")):
+    if ((device == "RNWF02") and (interface== "UART")):
 
         if(Database.getComponentByID("sercom6") == None):    
             res = Database.activateComponents(["sercom6"])
@@ -244,6 +252,11 @@ def finalizeComponent(sysrnwfOTARNWFComponent):
     else:
         print("OTA finalize : Host and Device are NOT SUPPORTED")
 
+def sysotaSubMenuVisible(symbol, event):
+    if (event["value"] == True):
+        symbol.setVisible(True)
+    else:
+        symbol.setVisible(False)
         
 
 def destroyComponent(sysrnwfOTARNWFComponent):
