@@ -19,6 +19,7 @@
 * MPLAB® X IDE plug-ins:
     * MPLAB® Code Configurator (MCC) v5.5.1  
 * SAME54 DFP : v3.8.234
+* SAM9X7_DFP : v1.4.151
 
 
 
