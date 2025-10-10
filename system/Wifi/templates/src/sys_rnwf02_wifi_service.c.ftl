@@ -50,7 +50,11 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
  */
 #include "system/inf/sys_rnwf_interface.h"
 #include "system/wifi/sys_rnwf_wifi_service.h"
+<#if SYS_RNWF_HOST == "Custom" && SYS_RNWF_WIFI_DEVICE == "RNWF02">
+#include "peripheral/sercom/usart/plib_${SYS_RNWF_WIFI_PERIPHERAL}_usart.h"
+<#else>
 #include "peripheral/sercom/usart/plib_sercom0_usart.h"
+</#if>
 
 
 /* ************************************************************************** */

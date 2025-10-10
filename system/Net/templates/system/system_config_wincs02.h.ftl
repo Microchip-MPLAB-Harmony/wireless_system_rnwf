@@ -78,4 +78,7 @@
 #define SYS_WINCS_TLS_ENABLE${i}                   0
 </#if>
 </#list>
+<#if SYS_RNWF_NET_DEBUG_LOGS == true>
+#define SYS_WINCS_NET_DEBUG_LOGS                 1
+</#if>
 /*----------------------------------------------------------------------------*/

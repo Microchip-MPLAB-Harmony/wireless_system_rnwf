@@ -57,7 +57,11 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #include "system/wifi/sys_rnwf_wifi_service.h"
 #include "peripheral/dmac/plib_dmac.h"
 #include "system/sys_rnwf_system_service.h"
+<#if SYS_RNWF_HOST == "Custom" && SYS_RNWF_WIFI_DEVICE == "RNWF02">
+#include "peripheral/sercom/usart/plib_${SYS_RNWF_WIFI_PERIPHERAL}_usart.h"
+<#else>
 #include "peripheral/sercom/usart/plib_sercom0_usart.h"
+</#if>
 <#if SYS_RNWF_NET_SER_ENABLE == true>  
 #include "system/net/sys_rnwf_net_service.h"
 </#if>
@@ -201,7 +205,11 @@ static inline bool SYS_RNWF_IF_IsRxReady()
 /* To Read Command Response from RNWF*/
 static inline size_t SYS_RNWF_IF_CommandRespRead(uint8_t* pRdBuffer, const size_t size)
 {
+<#if SYS_RNWF_HOST == "Custom" && SYS_RNWF_WIFI_DEVICE == "RNWF02">
+    return ${SYS_RNWF_WIFI_PERIPHERAL}_USART_Read(pRdBuffer, size);
+<#else>
     return SERCOM0_USART_Read(pRdBuffer, size);
+    </#if>
 }
 
 /* ************************************************************************** */
@@ -523,14 +531,23 @@ static size_t SYS_RNWF_IF_CommandSend(uint8_t *p_frame, size_t cmd_len)
     size_t ret = 0;
     if ( * p_frame != '\0') 
     {
+    <#if SYS_RNWF_HOST == "Custom" && SYS_RNWF_WIFI_DEVICE == "RNWF02">
+        if(true == DMAC_ChannelTransfer(DMAC_CHANNEL_0, p_frame, \
+                (const void * ) & (${SYS_RNWF_WIFI_PERIPHERAL}_REGS -> USART_INT.SERCOM_DATA), \
+                cmd_len))
+    <#else>
         if(true == DMAC_ChannelTransfer(DMAC_CHANNEL_0, p_frame, \
                 (const void * ) & (SERCOM0_REGS -> USART_INT.SERCOM_DATA), \
                 cmd_len))
+    </#if>
         {
             ret = cmd_len;
         }
-
+    <#if SYS_RNWF_HOST == "Custom" && SYS_RNWF_WIFI_DEVICE == "RNWF02">
+        while (!${SYS_RNWF_WIFI_PERIPHERAL}_USART_TransmitComplete());
+    <#else>
         while (!SERCOM0_USART_TransmitComplete());
+    </#if>
     }
     return ret;
 }

@@ -145,6 +145,14 @@ typedef enum
     /* Set SNTP Conf */
     SYS_WINCS_WIFI_SET_SNTP,
 
+<#if SYS_RNWF_WIFI_BT_COEXIST == true>            
+    /* Set Wifi BT Confg */
+    SYS_WINCS_WIFI_BT_COEX_CONFG,
+
+    /* Enable/Disable Wifi BT confg*/
+    SYS_WINCS_WIFI_BT_COEX_ENABLE,
+</#if>   
+
     /**<Configure the Wi-Fi parameters */          
     SYS_WINCS_WIFI_SET_PARAMS, 
 
@@ -153,6 +161,11 @@ typedef enum
 
     /**<Request/Trigger Wi-Fi disconnect */         
     SYS_WINCS_WIFI_STA_DISCONNECT, 
+
+<#if SYS_RNWF_PING == true>              
+    /* Ping Ip address*/  
+    SYS_WINCS_WIFI_PING,
+</#if>   
 
     /**<Register the callback for async events */
     SYS_WINCS_WIFI_AP_ENABLE,
@@ -183,6 +196,11 @@ typedef enum
 
     /* Get Reg Domain */
     SYS_WINCS_WIFI_GET_REG_DOMAIN,
+    
+<#if SYS_RNWF_POWER_SAVE_MODE == true>     
+    /* Powersave mode  */
+    SYS_WINCS_WIFI_ENABLE_POWERSAVE_MODE,
+</#if>   
 
     /**<Register the callback for async events */        
     SYS_WINCS_WIFI_SET_CALLBACK,     
@@ -242,6 +260,16 @@ typedef enum
 
     /* DNS resolved event */
     SYS_WINCS_WIFI_DNS_RESOLVED,
+    
+    /* DNS Error event */
+    SYS_WINCS_WIFI_DNS_ERROR,
+
+    /* DNS Timeout event */
+    SYS_WINCS_WIFI_DNS_TIME_OUT,
+<#if SYS_RNWF_PING == true>
+    /*Ping Response */
+    SYS_WINCS_PING_ECHO_RSP_RCVD,
+ </#if>
 
     /* WIFI Service Error*/
     SYS_WINCS_WIFI_ERROR,

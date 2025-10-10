@@ -26,6 +26,14 @@
 #### Global Variables ####
 ################################################################################
 global wifi_helpkeyword
+global sort_alphanumeric
+global CommModuleCount
+global HostCommComp
+global HostDebugComp
+global CommModule
+CommModuleInfo = ["None"]
+ModulePinDetails = {}
+ModulePinGroupIndex = {}
 
 wifi_helpkeyword = "mcc_h3_RNWF_wifi_system_service_configurations"
 ################################################################################
@@ -200,7 +208,7 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfHostDevConf.setLabel("Host & Device Configurations ")
     sysrnwfHostDevConf.setHelp(wifi_helpkeyword)
         
-    sysrnwfwifiHost = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_HOST", sysrnwfHostDevConf , ["None" , "SAME54X-pro", "SAM9X75"])
+    sysrnwfwifiHost = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_HOST", sysrnwfHostDevConf , ["None" , "SAME54X-pro", "SAM9X75", "Custom"])
     sysrnwfwifiHost.setLabel("Host ")
     sysrnwfwifiHost.setHelp(wifi_helpkeyword)
     sysrnwfwifiHost.setDescription("Select the Host Device")
@@ -235,6 +243,224 @@ def instantiateComponent(sysWifiRNWFComponent):
     sysrnwfwifiComment.setLabel("Warning!!! Host, Device and Interface are NOT SUPPORTED !!!")
     sysrnwfwifiComment.setVisible(False)
     sysrnwfwifiComment.setDependencies(sysrnwfwifiHostDevConf, ["SYS_RNWF_HOST","SYS_RNWF_WIFI_DEVICE","SYS_RNWF_SAM_9x75_WIFI_DEVICE","SYS_RNWF_INTERFACE_MODE"])
+
+###################################################################################################################################################
+# v3.1.0 dev
+
+#### ATDF File info
+    print("ATDF FIle Info")
+    global modules
+    CommModuleCount = 0
+
+
+    deviceNode = ATDF.getNode("/avr-tools-device-file/devices")
+    deviceChild = deviceNode.getChildren()
+    deviceName = deviceChild[0].getAttribute("family")
+    architecture = deviceChild[0].getAttribute("architecture")
+    series = deviceChild[0].getAttribute("series")
+    print("deviceName :" + str(deviceName))  
+    print("architecture :" + str(architecture))
+    print("Series :" + str(series)) 
+
+    periphNode = ATDF.getNode('/avr-tools-device-file/devices/device/peripherals')
+    modules = periphNode.getChildren()
+
+    for module in modules:
+        ModuleName = str(module.getAttribute('name'))
+
+        if ModuleName == 'FLEXCOM' or ModuleName == 'SERCOM' or ModuleName == 'SPI':
+            CommModule = ModuleName
+            instances = module.getChildren()
+
+            for instance in instances:
+                instName = str(instance.getAttribute('name'))  
+
+                global childs
+                childs = instance.getChildren()
+                ModuleNewPin ={}
+                for child in childs :
+                    if child.getName() == 'signals':
+                        signals = child.getChildren()
+                        for signal in signals:
+                            pad = str(signal.getAttribute('pad'))
+                            group = str(signal.getAttribute('group'))
+                            if(ModuleName == 'SERCOM'):
+                                index = str(signal.getAttribute('index'))
+                        # Assign the pad value to the dictionary
+                            if instName not in ModulePinDetails:
+                                ModulePinDetails[instName] = []
+                                ModulePinDetails[instName].append("None")
+                                ModulePinGroupIndex[instName] = []
+                            if(ModuleName == 'SERCOM'):
+                                ModuleNewPin = {"group":group , "index":index, "pin":pad}
+                            elif(ModuleName == 'FLEXCOM'):
+                                ModuleNewPin = {"group":group , "pin":pad}
+                            ModulePinGroupIndex[instName].append(ModuleNewPin)
+                            ModulePinDetails[instName].append(pad)
+
+                CommModuleInfo.append(instName)
+                CommModuleCount+= 1
+
+    availablePinDictionary = {}
+    availablePinDictionary = Database.sendMessage("core", "PIN_LIST", availablePinDictionary)
+
+
+####
+    sysrnwfwifiPeripheral = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_PERIPHERAL", sysrnwfAdvConf , CommModuleInfo)
+    sysrnwfwifiPeripheral.setLabel("Host Communication")
+    sysrnwfwifiPeripheral.setHelp(wifi_helpkeyword)
+    sysrnwfwifiPeripheral.setVisible(False)
+    sysrnwfwifiPeripheral.setDescription("Select the peripheral where Wifi device is connected")
+    sysrnwfwifiPeripheral.setDependencies(sysrnwfwifiPeripheralMenuVisible,["SYS_RNWF_HOST", "SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE"])
+
+    sysrnwfwifiSelectedPeripheral = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_SEL_PERIPHERAL", sysrnwfAdvConf , CommModuleInfo)
+    sysrnwfwifiSelectedPeripheral.setLabel(" Selected Sercom")
+    sysrnwfwifiSelectedPeripheral.setHelp(wifi_helpkeyword)
+    sysrnwfwifiSelectedPeripheral.setVisible(False)
+    sysrnwfwifiSelectedPeripheral.setDescription("Select the peripheral where Wifi device is connected")
+    sysrnwfwifiSelectedPeripheral.setDependencies(syswifiCustomPeripherals,["SYS_RNWF_HOST", "SYS_RNWF_WIFI_PERIPHERAL" ])
+
+    for slot in range(0,CommModuleCount):
+        CommModuleName = CommModule + str(slot)
+
+        sysrnwfwifisercompin = sysWifiRNWFComponent.createBooleanSymbol("PIN_CONFIG_" +str(CommModule) + str(slot) , sysrnwfwifiPeripheral)
+        sysrnwfwifisercompin.setLabel("Select pin for " + CommModuleName )
+        sysrnwfwifisercompin.setVisible(False)
+        sysrnwfwifisercompin.setHelp(wifi_helpkeyword)
+        sysrnwfwifisercompin.setDependencies(syswifiHostCommunicationComponentVisibility,["SYS_RNWF_WIFI_PERIPHERAL"])
+
+        #sercom = CommModule + str(slot)
+        sysrnwfwifiPeripheralrxPin = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_PERIPHERAL_UART_RX_PIN"+ str(slot), sysrnwfwifisercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiPeripheralrxPin.setLabel("UART Rx")
+        sysrnwfwifiPeripheralrxPin.setHelp(wifi_helpkeyword)
+        sysrnwfwifiPeripheralrxPin.setVisible(False)
+        sysrnwfwifiPeripheralrxPin.setDescription("Select the Pins")
+        sysrnwfwifiPeripheralrxPin.setDependencies(syswifiHostCommUARTPinSetting,["PIN_CONFIG_" +str(CommModule) + str(slot), "SYS_RNWF_HOST" ,"SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE" ])
+
+        sysrnwfwifiPeripheraltxPin = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_PERIPHERAL_UART_TX_PIN"+ str(slot), sysrnwfwifisercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiPeripheraltxPin.setLabel("UART Tx")
+        sysrnwfwifiPeripheraltxPin.setHelp(wifi_helpkeyword)
+        sysrnwfwifiPeripheraltxPin.setVisible(False)
+        sysrnwfwifiPeripheraltxPin.setDescription("Select the Pins")
+        sysrnwfwifiPeripheraltxPin.setDependencies(syswifiHostCommUARTPinSetting,["PIN_CONFIG_" +str(CommModule) + str(slot), "SYS_RNWF_HOST" ,"SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE"])
+
+        ##################################################
+        sysrnwfwifiPeripheralmisoPin = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_PERIPHERAL_SPI_MISO_PIN"+ str(slot), sysrnwfwifisercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiPeripheralmisoPin.setLabel("SPI MISO")
+        sysrnwfwifiPeripheralmisoPin.setHelp(wifi_helpkeyword)
+        sysrnwfwifiPeripheralmisoPin.setVisible(False)
+        sysrnwfwifiPeripheralmisoPin.setDescription("Select the Pins")
+        sysrnwfwifiPeripheralmisoPin.setDependencies(syswifiHostCommSPIPinSetting,["PIN_CONFIG_" +str(CommModule) + str(slot), "SYS_RNWF_HOST" ,"SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE" ])
+
+        sysrnwfwifiPeripheralmosiPin = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_PERIPHERAL_SPI_MOSI_PIN"+ str(slot), sysrnwfwifisercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiPeripheralmosiPin.setLabel("SPI MOSI")
+        sysrnwfwifiPeripheralmosiPin.setHelp(wifi_helpkeyword)
+        sysrnwfwifiPeripheralmosiPin.setVisible(False)
+        sysrnwfwifiPeripheralmosiPin.setDescription("Select the Pins")
+        sysrnwfwifiPeripheralmosiPin.setDependencies(syswifiHostCommSPIPinSetting,["PIN_CONFIG_" +str(CommModule) + str(slot), "SYS_RNWF_HOST" ,"SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE"])
+
+        sysrnwfwifiPeripheralcsPin = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_PERIPHERAL_SPI_CS_PIN"+ str(slot), sysrnwfwifisercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiPeripheralcsPin.setLabel("SPI Chip Select")
+        sysrnwfwifiPeripheralcsPin.setHelp(wifi_helpkeyword)
+        sysrnwfwifiPeripheralcsPin.setVisible(False)
+        sysrnwfwifiPeripheralcsPin.setDescription("Select the Pins")
+        sysrnwfwifiPeripheralcsPin.setDependencies(syswifiHostCommSPIPinSetting,["PIN_CONFIG_" +str(CommModule) + str(slot), "SYS_RNWF_HOST" ,"SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE" ])
+
+        sysrnwfwifiPeripheralclkPin = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_PERIPHERAL_SPI_CLK_PIN"+ str(slot), sysrnwfwifisercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiPeripheralclkPin.setLabel("SPI Clock")
+        sysrnwfwifiPeripheralclkPin.setHelp(wifi_helpkeyword)
+        sysrnwfwifiPeripheralclkPin.setVisible(False)
+        sysrnwfwifiPeripheralclkPin.setDescription("Select the Pins")
+        sysrnwfwifiPeripheralclkPin.setDependencies(syswifiHostCommSPIPinSetting,["PIN_CONFIG_" +str(CommModule) + str(slot), "SYS_RNWF_HOST" ,"SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE"])
+        
+        ######################################################
+        sysrnwfwifiselectedPeripheralPinenable = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_PERIPHERAL_ENABLE_PIN"+ str(slot), sysrnwfwifisercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiselectedPeripheralPinenable.setLabel("Selected pin")
+        sysrnwfwifiselectedPeripheralPinenable.setHelp(wifi_helpkeyword)
+        sysrnwfwifiselectedPeripheralPinenable.setVisible(False)
+        sysrnwfwifiselectedPeripheralPinenable.setDescription("Select the Pins")
+        sysrnwfwifiselectedPeripheralPinenable.setDependencies(syswifiHostPeripheralPinEnableSetting,["PIN_CONFIG_" +str(CommModule) + str(slot), "SYS_RNWF_WIFI_PERIPHERAL","SYS_RNWF_WIFI_PERIPHERAL_UART_RX_PIN" + str(slot), "SYS_RNWF_WIFI_PERIPHERAL_UART_TX_PIN" + str(slot), "SYS_RNWF_WIFI_PERIPHERAL_SPI_MISO_PIN" + str(slot) , "SYS_RNWF_WIFI_PERIPHERAL_SPI_MOSI_PIN" + str(slot), "SYS_RNWF_WIFI_PERIPHERAL_SPI_CS_PIN" + str(slot), "SYS_RNWF_WIFI_PERIPHERAL_SPI_CLK_PIN" + str(slot)])
+        ######################################################
+
+
+    sysrnwfwifiDebugLog = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_DEBUG_LOG", sysrnwfAdvConf , CommModuleInfo)
+    sysrnwfwifiDebugLog.setLabel("Host Debug Logs")
+    sysrnwfwifiDebugLog.setHelp(wifi_helpkeyword)
+    sysrnwfwifiDebugLog.setVisible(False)
+    sysrnwfwifiDebugLog.setDescription("Select the sercom where debug logs will be sent")
+    sysrnwfwifiDebugLog.setDependencies(sysrnwfwifiPeripheralMenuVisible,["SYS_RNWF_HOST", "SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE"])
+
+    sysrnwfwifiSelectedDebugmodule = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_SEL_DBG_MODULE", sysrnwfAdvConf , CommModuleInfo)
+    sysrnwfwifiSelectedDebugmodule.setLabel(" Selected Sercom for host debug logs")
+    sysrnwfwifiSelectedDebugmodule.setHelp(wifi_helpkeyword)
+    sysrnwfwifiSelectedDebugmodule.setVisible(False)
+    sysrnwfwifiSelectedDebugmodule.setDescription("Select the pmodule for host debug ;ogs")
+    sysrnwfwifiSelectedDebugmodule.setDependencies(syswifiCustomPeripherals,["SYS_RNWF_WIFI_DEBUG_LOG"])
+
+    for slot in range(0,CommModuleCount):
+        CommModuleName = CommModule + str(slot)
+
+        sysrnwfwifidebugsercompin = sysWifiRNWFComponent.createBooleanSymbol("PIN_CONFIG_DEBUG_" + str(CommModule) + str(slot) , sysrnwfwifiDebugLog)
+        sysrnwfwifidebugsercompin.setLabel("Select pin for " + CommModuleName )
+        sysrnwfwifidebugsercompin.setVisible(False)
+        sysrnwfwifidebugsercompin.setHelp(wifi_helpkeyword)
+        sysrnwfwifidebugsercompin.setDependencies(syswifiHostDebugComponentVisibility,["SYS_RNWF_WIFI_DEBUG_LOG" ])
+
+        
+        sysrnwfwifiDebugrxPin = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_DEBUG_UART_RX_PIN"+ str(slot), sysrnwfwifidebugsercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiDebugrxPin.setLabel("UART Rx")
+        sysrnwfwifiDebugrxPin.setHelp(wifi_helpkeyword)
+        sysrnwfwifiDebugrxPin.setVisible(False)
+        sysrnwfwifiDebugrxPin.setDescription("Select the Pins")
+        sysrnwfwifiDebugrxPin.setDependencies(syswifiHostDebugUARTPinSetting,["PIN_CONFIG_DEBUG_" + str(CommModule) + str(slot), "SYS_RNWF_HOST" ,"SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE"])
+
+        sysrnwfwifidebugtxPin = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_DEBUG_UART_TX_PIN"+ str(slot), sysrnwfwifidebugsercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifidebugtxPin.setLabel("UART Tx")
+        sysrnwfwifidebugtxPin.setHelp(wifi_helpkeyword)
+        sysrnwfwifidebugtxPin.setVisible(False)
+        sysrnwfwifidebugtxPin.setDescription("Select the Pins")
+        sysrnwfwifidebugtxPin.setDependencies(syswifiHostDebugUARTPinSetting,["PIN_CONFIG_DEBUG_" + str(CommModule) + str(slot), "SYS_RNWF_HOST" ,"SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE"])
+
+        ##################################################
+        sysrnwfwifiDebugmisoPin = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_DEBUG_SPI_MISO_PIN"+ str(slot), sysrnwfwifidebugsercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiDebugmisoPin.setLabel("SPI MISO")
+        sysrnwfwifiDebugmisoPin.setHelp(wifi_helpkeyword)
+        sysrnwfwifiDebugmisoPin.setVisible(False)
+        sysrnwfwifiDebugmisoPin.setDescription("Select the Pins")
+        sysrnwfwifiDebugmisoPin.setDependencies(syswifiHostDebugSPIPinSetting,["PIN_CONFIG_DEBUG_" + str(CommModule) + str(slot), "SYS_RNWF_HOST" ,"SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE" ])
+
+        sysrnwfwifiDebugmosiPin = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_DEBUG_SPI_MOSI_PIN"+ str(slot), sysrnwfwifidebugsercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiDebugmosiPin.setLabel("SPI MOSI")
+        sysrnwfwifiDebugmosiPin.setHelp(wifi_helpkeyword)
+        sysrnwfwifiDebugmosiPin.setVisible(False)
+        sysrnwfwifiDebugmosiPin.setDescription("Select the Pins")
+        sysrnwfwifiDebugmosiPin.setDependencies(syswifiHostDebugSPIPinSetting,["PIN_CONFIG_DEBUG_" + str(CommModule) + str(slot), "SYS_RNWF_HOST" ,"SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE"])
+
+        sysrnwfwifiDebugcsPin = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_DEBUG_SPI_CS_PIN"+ str(slot), sysrnwfwifidebugsercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiDebugcsPin.setLabel("SPI Chip Select")
+        sysrnwfwifiDebugcsPin.setHelp(wifi_helpkeyword)
+        sysrnwfwifiDebugcsPin.setVisible(False)
+        sysrnwfwifiDebugcsPin.setDescription("Select the Pins")
+        sysrnwfwifiDebugcsPin.setDependencies(syswifiHostDebugSPIPinSetting,["PIN_CONFIG_DEBUG_" + str(CommModule) + str(slot), "SYS_RNWF_HOST" ,"SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE" ])
+
+        sysrnwfwifiDebugclkPin = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_DEBUG_SPI_CLK_PIN"+ str(slot), sysrnwfwifidebugsercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiDebugclkPin.setLabel("SPI Clock")
+        sysrnwfwifiDebugclkPin.setHelp(wifi_helpkeyword)
+        sysrnwfwifiDebugclkPin.setVisible(False)
+        sysrnwfwifiDebugclkPin.setDescription("Select the Pins")
+        sysrnwfwifiDebugclkPin.setDependencies(syswifiHostDebugSPIPinSetting,["PIN_CONFIG_DEBUG_" + str(CommModule) + str(slot), "SYS_RNWF_HOST" ,"SYS_RNWF_WIFI_DEVICE", "SYS_RNWF_INTERFACE_MODE"])
+        ######################################################
+
+        sysrnwfwifiselectedDebugPinenable = sysWifiRNWFComponent.createComboSymbol("SYS_RNWF_WIFI_DEBUG_ENABLE_PIN"+ str(slot), sysrnwfwifidebugsercompin , ModulePinDetails.get(CommModuleName))
+        sysrnwfwifiselectedDebugPinenable.setLabel("Selected pin")
+        sysrnwfwifiselectedDebugPinenable.setHelp(wifi_helpkeyword)
+        sysrnwfwifiselectedDebugPinenable.setVisible(False)
+        sysrnwfwifiselectedDebugPinenable.setDescription("Select the Pins")
+        sysrnwfwifiselectedDebugPinenable.setDependencies(syswifiHostDebugPinEnableSetting,["PIN_CONFIG_DEBUG_" + str(CommModule) + str(slot), "SYS_RNWF_WIFI_DEBUG_LOG","SYS_RNWF_WIFI_DEBUG_UART_RX_PIN" + str(slot), "SYS_RNWF_WIFI_DEBUG_UART_TX_PIN" + str(slot), "SYS_RNWF_WIFI_DEBUG_SPI_MISO_PIN" + str(slot) , "SYS_RNWF_WIFI_DEBUG_SPI_MOSI_PIN" + str(slot), "SYS_RNWF_WIFI_DEBUG_SPI_CS_PIN" + str(slot), "SYS_RNWF_WIFI_DEBUG_SPI_CLK_PIN" + str(slot)])
+        #######################################################
+
+
+###################################################################################################################################################
 
     ######################################################### Wifi Configurations Menu ###########################################################
 
@@ -662,7 +888,7 @@ def sysrnwfwifiDeviceMenuVisible(symbol, event):
     component = symbol.getComponent()
     host = component.getSymbolValue("SYS_RNWF_HOST")
     device = component.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
-    if (host == "SAME54X-pro" or host == "None"):
+    if (host == "SAME54X-pro" or host == "None" or host == "Custom"):
         symbol.setVisible(True)
     else:
         symbol.setVisible(False)
@@ -738,7 +964,7 @@ def syswifiMenuVisible(symbol, event):
 
 
 def sysrnwfwifiRnwf02FilesEnable(symbol, event):
-    print("sysrnwfwifirnwf02FilesEnable")
+    # print("sysrnwfwifirnwf02FilesEnable: Enables RNWF02-related files")
     data = symbol.getComponent()
     host = data.getSymbolValue("SYS_RNWF_HOST")
     device = data.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
@@ -750,7 +976,7 @@ def sysrnwfwifiRnwf02FilesEnable(symbol, event):
         symbol.setEnabled(False)
 
 def sysrnwfwifiWincs02FilesEnable(symbol, event):
-    print("sysrnwfwifiWincs02FilesEnable")
+    # print("sysrnwfwifiWincs02FilesEnable: Enables WINCS02-related files")
     data = symbol.getComponent()
     sam9x75Device = data.getSymbolValue("SYS_RNWF_SAM_9x75_WIFI_DEVICE")
     device = data.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
@@ -762,20 +988,21 @@ def sysrnwfwifiWincs02FilesEnable(symbol, event):
         symbol.setEnabled(False)
 
 def sysrnwfwifiRnwf11FilesEnable(symbol, event):
-    print("sysrnwfwifirnwf11FilesEnable")
+    # print("sysrnwfwifirnwf11FilesEnable: Enables RNWF11-related files")
     data = symbol.getComponent()
     host = data.getSymbolValue("SYS_RNWF_HOST")
     device = data.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
     interface = data.getSymbolValue("SYS_RNWF_INTERFACE_MODE")
 
     if ((host == "SAME54X-pro") and (device == "RNWF11") and (interface== "UART")):
-        print("File : Host and Device are SUPPORTED - RN")
+        print("RNWF11 File : Host and Device are SUPPORTED - RN")
         symbol.setEnabled(True)
     else:
-        print("File : Host and Device are NOT SUPPORTED")
+        symbol.setEnabled(False)
+        # print("RNWF11 File : Host and Device are NOT SUPPORTED")
 		
 def syswifiAdvancedConfMenuVisible(symbol, event):
-    print("syswifiAdvancedConfMenuVisible")
+    # print("syswifiAdvancedConfMenuVisible: Shows or hides the advanced configuration menu.")
     comp = symbol.getComponent()
     device = comp.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
     sam9x75Device = comp.getSymbolValue("SYS_RNWF_SAM_9x75_WIFI_DEVICE")
@@ -787,7 +1014,7 @@ def syswifiAdvancedConfMenuVisible(symbol, event):
 
 
 def syscomponentautoactivate(symbol, event):
-    print("syscomponentautoactivate")
+    print("syscomponentautoactivate: Auto activates component.")
     data = symbol.getComponent()
     host = data.getSymbolValue("SYS_RNWF_HOST")
     device = data.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
@@ -1119,15 +1346,15 @@ def syscomponentautoactivate(symbol, event):
         autoConnectTabletc0 = [["tc0","TC0_TMR" , "sys_time", "sys_time_TMR_dependency"]]
         res = Database.connectDependencies(autoConnectTabletc0)
 
-
     else:
-        print("Host and Device are NOT SUPPORTED")
+        print("Host and device are not supported or custom selected.")
 
 
 
 def syswifiautoInclude(symbol, event):
     if(Database.getComponentByID("sysWifiRNWF") == None):    
         res = Database.activateComponents(["sysWifiRNWF"])
+
 def syswifiprovautoInclude(symbol, event):
     if (event["value"] == True):
         if(Database.getComponentByID("sysWifiProvRNWF") == None):    
@@ -1137,6 +1364,7 @@ def syswifiprovautoInclude(symbol, event):
             res = Database.activateComponents(["sysNetRNWF"]) 
     if (event["value"] == False):
         res = Database.deactivateComponents(["sysWifiProvRNWF"])
+
 def sysmqttautoInclude(symbol, event):
     if (event["value"] == True):
         if(Database.getComponentByID("sysMqttRNWF") == None):    
@@ -1149,13 +1377,12 @@ def sysnetautoInclude(symbol, event):
             res = Database.activateComponents(["sysNetRNWF"])
     if (event["value"] == False):
         res = Database.deactivateComponents(["sysNetRNWF"])
+
 def sysotaautoInclude(symbol, event):
     if (event["value"] == True):
         if(Database.getComponentByID("sysOtaRNWF") == None):    
-            res = Database.activateComponents(["sysOtaRNWF"])
-        if(Database.getComponentByID("sysNetRNWF") == None):    
-            Database.setSymbolValue("sysWifiRNWF", "SYS_RNWF_NET_SER_ENABLE", True)
-            res = Database.activateComponents(["sysNetRNWF"]) 
+            Database.setSymbolValue("sysWifiRNWF", "SYS_RNWF_OTA_SER_ENABLE", True)
+            res = Database.activateComponents(["sysOtaRNWF"]) 
     if (event["value"] == False):
         res = Database.deactivateComponents(["sysOtaRNWF"])
 
@@ -1182,3 +1409,204 @@ def syswifiSTAMenu(symbol, event):
 
 def syswifiAPMenu(symbol, event):
     print("syswifiAPMenu")
+
+
+#######################################################################################################
+# v3.1.0 dev
+# This function Sorts a list of strings in alphanumeric order
+def sort_alphanumeric(l):
+    import re
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
+    return sorted(l, key = alphanum_key)
+
+
+# This function searches for a given value in the dictionary and returns the corresponding key.
+def find_key_by_value(availablePinDictionary, value_to_find):
+    if value_to_find in availablePinDictionary.values():
+        for k, v in availablePinDictionary.items():
+            if v == value_to_find:
+                return k
+    return None
+
+# This function is to find and return all entries in the nested dictionary that contain the specified pin value.
+def find_pin_entry(sercom_dict, sercom, pin):
+    # Search for the pin in the specified SERCOM
+    return next((entry for entry in sercom_dict[sercom] if entry['pin'] == pin), None)
+
+# Function to get the concatenated group and index string from a list
+def get_group_index_string(entries):
+    if not entries:
+        return None
+    entry = entries[0]  
+    group = entry['group']
+    if 'index' in entry:
+        index = entry['index']
+        return str(group + index)
+    else:
+        return str(group)
+
+def sysrnwfwifiPeripheralMenuVisible(symbol, event):
+    # print("sysrnwfwifiPeripheralMenuVisible: Shows or hides the peripheral menu.")
+    component = symbol.getComponent()
+    host = component.getSymbolValue("SYS_RNWF_HOST")
+    device = component.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
+    interface = component.getSymbolValue("SYS_RNWF_INTERFACE_MODE")
+
+    if(host == "Custom" and device != "None" and interface != "None"):
+        print("Custom Menu Visible.")
+        symbol.setVisible(True)
+    else:
+        print("Desibaling Component")
+        symbol.setVisible(False)
+
+
+def syswifiHostCommunicationComponentVisibility(symbol, event):
+    # print("syswifiHostCommunicationComponentVisibility: Shows or hides the host communication component")
+    data = symbol.getComponent()
+    HostCommComp = data.getSymbolValue("SYS_RNWF_WIFI_PERIPHERAL")
+    if (event["value"] != "None"):
+        # print("Enabling Sercom RX and TX")
+        symbol.getComponent().getSymbolByID("PIN_CONFIG_" + str(HostCommComp)).setVisible(True)
+    else:
+        # print("Desibaling Host Communication Component Menu")
+        symbol.setVisible(False)
+    
+
+def syswifiHostDebugComponentVisibility(symbol, event):
+    # print("syswifiHostDebugComponentVisibility: Shows or hides the host debug component.")
+    data = symbol.getComponent()
+    HostDebugComp = data.getSymbolValue("SYS_RNWF_WIFI_DEBUG_LOG")
+    if (event["value"] != "None"):
+        print("Enabling Sercom RX and TX")
+        symbol.getComponent().getSymbolByID("PIN_CONFIG_DEBUG_" + str(HostDebugComp)).setVisible(True)
+    else:
+        print("Desibaling Host Debug Component Menu")
+        symbol.setVisible(False)
+
+
+def syswifiHostCommUARTPinSetting(symbol,event):
+    # print("syswifiHostCommUARTPinSetting: Shows or hides UART pins for host communication.")
+    component = symbol.getComponent()
+    host = component.getSymbolValue("SYS_RNWF_HOST")
+    device = component.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
+    interface = component.getSymbolValue("SYS_RNWF_INTERFACE_MODE")
+
+    if(event["value"] == True and host == "Custom" and device == "RNWF02" and interface == "UART"):
+        symbol.setVisible(True)
+    else:
+        symbol.setVisible(False)
+
+
+def syswifiHostDebugUARTPinSetting(symbol, event):
+    # print("syswifiHostDebugUARTPinSetting: Shows or hides UART pins for host debug communication.")
+    component = symbol.getComponent()
+    host = component.getSymbolValue("SYS_RNWF_HOST")
+    device = component.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
+    interface = component.getSymbolValue("SYS_RNWF_INTERFACE_MODE")
+
+    if(event["value"] == True and host == "Custom" and device == "RNWF02" and interface == "UART"):
+        symbol.setVisible(True)
+    else:
+        symbol.setVisible(False)
+
+
+def syswifiHostCommSPIPinSetting(symbol, event):
+    # print("syswifiHostCommSPIPinSetting: Shows or hides SPI pins for host communication.")
+    component = symbol.getComponent()
+    host = component.getSymbolValue("SYS_RNWF_HOST")
+    device = component.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
+    interface = component.getSymbolValue("SYS_RNWF_INTERFACE_MODE")
+
+    if(event["value"] == True and host == "Custom" and device == "WINCS02" and interface == "SPI"):
+        symbol.setVisible(True)
+    else:
+        symbol.setVisible(False)
+
+
+def syswifiHostDebugSPIPinSetting(symbol, event):
+    # print("syswifiHostDebugSPIPinSetting : Shows or hides SPI pins for host debug communication.")
+    component = symbol.getComponent()
+    host = component.getSymbolValue("SYS_RNWF_HOST")
+    device = component.getSymbolValue("SYS_RNWF_WIFI_DEVICE")
+    interface = component.getSymbolValue("SYS_RNWF_INTERFACE_MODE")
+
+    if(event["value"] == True and host == "Custom" and device == "WINCS02" and interface == "SPI"):
+        symbol.setVisible(True)
+    else:
+        symbol.setVisible(False)
+
+
+def syswifiHostDebugPinEnableSetting(symbol, event):
+    # print("syswifiHostDebugPinEnableSetting: Enables/desables host debug pins.")
+    data = symbol.getComponent()
+    ModuleSelected = data.getSymbolValue("SYS_RNWF_WIFI_DEBUG_LOG")
+
+    value_to_find = event["value"]
+
+    availablePinDictionary = {}
+    # Send message to core to get available pins
+    availablePinDictionary = Database.sendMessage("core", "PIN_LIST", availablePinDictionary)
+    
+    # Check if the selected pin is present in the dictionary
+    if value_to_find in availablePinDictionary.values():
+        # Retrieve the key associated with the specified value(value_to_find) in the dictionary(availablePinDictionary).
+        key = find_key_by_value(availablePinDictionary, value_to_find)
+
+        entries_with_pin = find_pin_entry(ModulePinGroupIndex, ModuleSelected ,value_to_find)
+        entries_list = [entries_with_pin]
+        group_index_string = get_group_index_string(entries_list)
+
+        value1 = "PIN_" + str(key) + "_FUNCTION_TYPE"
+        if 'SERCOM' in ModuleSelected:
+            value2 = str(ModuleSelected) + "_" + str(group_index_string)
+        elif 'FLEXCOM' in ModuleSelected:
+            value2 = str(group_index_string)
+        else:
+            print("Sercom pr flexcom is not present")
+        Database.setSymbolValue("core", value1 , value2)
+        # print("Value1:" + value1 + "value2 :" + value2)
+        # print( "Setting PIN:" + value_to_find + "   PIN_" + str(key) + "_FUNCTION_TYPE , " + str(ModuleSelected) + "_" + str(group_index_string))
+
+
+def syswifiHostPeripheralPinEnableSetting(symbol, event):
+    # print("syswifiHostPeripheralPinEnableSetting: Enables/Disable host peripheral pins")
+    
+    data = symbol.getComponent()
+    ModuleSelected = data.getSymbolValue("SYS_RNWF_WIFI_PERIPHERAL")
+    value_to_find = event["value"]
+    key = None
+
+    availablePinDictionary = {}
+    # Send message to core to get available pins
+    availablePinDictionary = Database.sendMessage("core", "PIN_LIST", availablePinDictionary)
+    
+    # Check if the selected pin is present in the dictionary
+    if value_to_find in availablePinDictionary.values():
+        # Retrieve the key associated with the specified value(value_to_find) in the dictionary(availablePinDictionary).
+        key = find_key_by_value(availablePinDictionary, value_to_find)
+
+        entries_with_pin = find_pin_entry(ModulePinGroupIndex, ModuleSelected ,value_to_find)
+        # print("entries_with_pin:" + str(entries_with_pin))
+        entries_list = [entries_with_pin]
+        group_index_string = get_group_index_string(entries_list)
+        value1 = "PIN_" + str(key) + "_FUNCTION_TYPE"
+
+        if 'SERCOM' in ModuleSelected:
+            value2 = str(ModuleSelected) + "_" + str(group_index_string)
+        elif 'FLEXCOM' in ModuleSelected:
+            value2 = str(group_index_string)
+            
+        Database.setSymbolValue("core", value1 , value2)
+        # print("Value1:" + value1 + "value2 :" + value2)
+        # print( "Setting PIN:" + value_to_find + "   PIN_" + str(key) + "_FUNCTION_TYPE , " + str(ModuleSelected) + "_" + str(group_index_string))
+
+def syswifiCustomPeripherals(symbol, event):
+    data = symbol.getComponent()
+    host = data.getSymbolValue("SYS_RNWF_HOST")
+
+    if (host == "Custom") and event["value"] != "None" :
+        atCmdSercom = event["value"].lower()
+        Database.activateComponents([atCmdSercom])
+
+#######################################################################################################

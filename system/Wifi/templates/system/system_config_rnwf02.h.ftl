@@ -110,3 +110,12 @@
 #define SYS_RNWF_PING_ADDRESS               "${SYS_RNWF_PING_ADDRESS}"
 </#if>
 #define SYS_RNWF_WIFI_CallbackHandler	    ${SYS_RNWF_WIFI_CALLBACK_HANDLER}
+
+
+<#if SYS_RNWF_HOST == "Custom" && SYS_RNWF_WIFI_DEVICE == "RNWF02">
+#define SYS_RNWF_COMM_MODULE                "${SYS_RNWF_WIFI_PERIPHERAL}"
+#define SYS_RNWF_DEBUG_MODULE               "${SYS_RNWF_WIFI_DEBUG_LOG}"
+<#else>
+#define SYS_RNWF_COMM_MODULE                NULL
+#define SYS_RNWF_DEBUG_MODULE               NULL
+</#if>

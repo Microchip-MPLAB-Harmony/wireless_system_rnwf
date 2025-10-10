@@ -47,31 +47,86 @@ def instantiateComponent(sysrnwfOTARNWFComponent):
     #                           OTA main menu                        #
     #-------------------------------------------------------------------------#
  
+ ################################# RNWF02 DFU Configurations
+    sysrnwfwifiotaDevice = sysrnwfOTARNWFComponent.createComboSymbol("SYS_RN_NC_OTA_DEVICE", None , ["None","RNWF02","WINCS02"])
+    sysrnwfwifiotaDevice.setLabel("Select device ")
+    sysrnwfwifiotaDevice.setHelp(ota_helpkeyword)
+    sysrnwfwifiotaDevice.setVisible(True)
+    sysrnwfwifiotaDevice.setDescription("Select the Device")
+    sysrnwfwifiotaDevice.setDefaultValue("None")
+    
+    sysrnwfotadfuEnable = sysrnwfOTARNWFComponent.createBooleanSymbol("SYS_RNWF_OTA_DFU_ENABLE", None)
+    sysrnwfotadfuEnable.setLabel("RNWF02")
+    sysrnwfotadfuEnable.setHelp(ota_helpkeyword)
+    sysrnwfotadfuEnable.setDefaultValue(False)
+    sysrnwfotadfuEnable.setVisible(False)
+    sysrnwfotadfuEnable.setDescription("Enable DFU mode Configuration ")
+    sysrnwfotadfuEnable.setDependencies(sysOtarnwfMenuEnable, ["SYS_RN_NC_OTA_DEVICE"])
+
     sysrnwfOtaConfSoc = sysrnwfOTARNWFComponent.createIntegerSymbol("SYS_RNWF_OTA_CONF_SOC", None)
     sysrnwfOtaConfSoc.setLabel("OTA Configuration Socket ")
     sysrnwfOtaConfSoc.setHelp(ota_helpkeyword)
     sysrnwfOtaConfSoc.setDescription("Socket to receive the OTA server and Image details")
-    sysrnwfOtaConfSoc.setVisible(True)
+    sysrnwfOtaConfSoc.setVisible(False)
     sysrnwfOtaConfSoc.setMin(0)
     sysrnwfOtaConfSoc.setMax(sysrnwfnetMaxSockets)
     sysrnwfOtaConfSoc.setDefaultValue(0)
+    sysrnwfOtaConfSoc.setDependencies(sysotaDFUautoMenu, ["SYS_RNWF_OTA_DFU_ENABLE"])
 
     sysrnwfOtaServerSoc = sysrnwfOTARNWFComponent.createIntegerSymbol("SYS_RNWF_OTA_SERVER_SOC", None)
     sysrnwfOtaServerSoc.setLabel("OTA Server Socket ")
     sysrnwfOtaServerSoc.setHelp(ota_helpkeyword)
-    sysrnwfOtaServerSoc.setVisible(True)
+    sysrnwfOtaServerSoc.setVisible(False)
     sysrnwfOtaServerSoc.setMin(0)
     sysrnwfOtaServerSoc.setMax(sysrnwfnetMaxSockets)
     sysrnwfOtaServerSoc.setDescription("OTA Server Socket ")
     sysrnwfOtaServerSoc.setDefaultValue(1)
+    sysrnwfOtaServerSoc.setDependencies(sysotaDFUautoMenu, ["SYS_RNWF_OTA_DFU_ENABLE"])
 
     sysrnwfOtaFlashAddr = sysrnwfOTARNWFComponent.createStringSymbol("SYS_RNWF_OTA_FLASH_ADDR", None)
     sysrnwfOtaFlashAddr.setLabel("OTA FW Flash Address ")
     sysrnwfOtaFlashAddr.setHelp(ota_helpkeyword)
-    sysrnwfOtaFlashAddr.setVisible(True)
+    sysrnwfOtaFlashAddr.setVisible(False)
     sysrnwfOtaFlashAddr.setDescription("Enter the Flash Address of OTA image in device low : 0x60000000, high : 0x600F0000")
     sysrnwfOtaFlashAddr.setDefaultValue("0x600F0000")
+    sysrnwfOtaFlashAddr.setDependencies(sysotaDFUautoMenu, ["SYS_RNWF_OTA_DFU_ENABLE"])
 
+######################### WINCS02 Inbuild OTA Configirations
+    syswincsdirectotaEnable = sysrnwfOTARNWFComponent.createBooleanSymbol("SYS_WINCS_DIRECT_OTA_ENABLE", None)
+    syswincsdirectotaEnable.setLabel("WINCS02")
+    syswincsdirectotaEnable.setHelp(ota_helpkeyword)
+    syswincsdirectotaEnable.setVisible(False)
+    syswincsdirectotaEnable.setDescription("Enable WINCS02 inbuilt OTA Configuration ")
+    syswincsdirectotaEnable.setDependencies(sysOtawincsMenuEnable, ["SYS_RN_NC_OTA_DEVICE"])
+
+    syswincsOtaServerSoc = sysrnwfOTARNWFComponent.createIntegerSymbol("SYS_WINCS_OTA_SERVER_SOC", syswincsdirectotaEnable)
+    syswincsOtaServerSoc.setLabel("OTA Server Socket ")
+    syswincsOtaServerSoc.setHelp(ota_helpkeyword)
+    syswincsOtaServerSoc.setVisible(False)
+    syswincsOtaServerSoc.setMin(0)
+    syswincsOtaServerSoc.setMax(sysrnwfnetMaxSockets)
+    syswincsOtaServerSoc.setDescription("OTA Server Socket ")
+    syswincsOtaServerSoc.setDefaultValue(0)
+    syswincsOtaServerSoc.setDependencies(syswincsdirectotaautoMenu, ["SYS_WINCS_DIRECT_OTA_ENABLE"])
+
+    syswincsOtasfile = sysrnwfOTARNWFComponent.createStringSymbol("SYS_WINCS_OTA_FILE_NAME", syswincsdirectotaEnable)
+    syswincsOtasfile.setLabel("File Name")
+    syswincsOtasfile.setHelp(ota_helpkeyword)
+    syswincsOtasfile.setVisible(False)
+    syswincsOtasfile.setDescription("Enter the file name")
+    syswincsOtasfile.setDependencies(syswincsdirectotaautoMenu, ["SYS_WINCS_DIRECT_OTA_ENABLE"])
+
+    syswincsOtatimeout = sysrnwfOTARNWFComponent.createIntegerSymbol("SYS_WINCS_OTA_TIME_OUT", syswincsdirectotaEnable)
+    syswincsOtatimeout.setLabel("OTA Time out ")
+    syswincsOtatimeout.setHelp(ota_helpkeyword)
+    syswincsOtatimeout.setVisible(False)
+    syswincsOtatimeout.setMin(0)
+    syswincsOtatimeout.setMax(200)
+    syswincsOtatimeout.setDescription("Ota Time out ")
+    syswincsOtatimeout.setDefaultValue(20)
+    syswincsOtatimeout.setDependencies(syswincsdirectotaautoMenu, ["SYS_WINCS_DIRECT_OTA_ENABLE"])
+
+######################### Advanced Configurations
     sysrnwfotaadvancedconfigurations = sysrnwfOTARNWFComponent.createCommentSymbol("SYS_RNWF_OTA_ADV_CONF", None)
     sysrnwfotaadvancedconfigurations.setLabel("Advanced Configurations ")
     sysrnwfotaadvancedconfigurations.setHelp(ota_helpkeyword)
@@ -116,6 +171,39 @@ def instantiateComponent(sysrnwfOTARNWFComponent):
     sysrnwfotaHeaderFile.setEnabled(False)
     sysrnwfotaHeaderFile.setDependencies(sysotaRnwf02FilesEnable, ["sysWifiRNWF.SYS_RNWF_OTA_SER_ENABLE"])
 
+###WINCS02 Code generation #####################
+    syswincsotaSourceFile = sysrnwfOTARNWFComponent.createFileSymbol("SYS_WINCS_OTA_SOURCE", None)
+    syswincsotaSourceFile.setSourcePath("system/Ota/templates/src/sys_wincs02_ota_service.c.ftl")
+    syswincsotaSourceFile.setOutputName("sys_wincs_ota_service.c")
+    syswincsotaSourceFile.setDestPath("system/ota/src")
+    syswincsotaSourceFile.setProjectPath("config/" + configName + "/system/ota/")
+    syswincsotaSourceFile.setType("SOURCE")
+    syswincsotaSourceFile.setMarkup(True)
+    syswincsotaSourceFile.setEnabled(False)
+    syswincsotaSourceFile.setDependencies(sysotaWincs02FilesEnable,["sysWifiRNWF.SYS_RNWF_OTA_SER_ENABLE"])
+
+
+    syswincsotaHeaderFile = sysrnwfOTARNWFComponent.createFileSymbol("SYS_WINCS_OTA_HEADER", None)
+    syswincsotaHeaderFile.setSourcePath("system/Ota/templates/sys_wincs02_ota_service.h.ftl")
+    syswincsotaHeaderFile.setOutputName("sys_wincs_ota_service.h")
+    syswincsotaHeaderFile.setDestPath("system/ota/")
+    syswincsotaHeaderFile.setProjectPath("config/" + configName + "/system/ota/")
+    syswincsotaHeaderFile.setType("HEADER")
+    syswincsotaHeaderFile.setMarkup(True)
+    syswincsotaHeaderFile.setOverwrite(True)
+    syswincsotaHeaderFile.setEnabled(False)
+    syswincsotaHeaderFile.setDependencies(sysotaWincs02FilesEnable, ["sysWifiRNWF.SYS_RNWF_OTA_SER_ENABLE"])
+
+    ###########WINCS02 system header #################
+    syswincsotaSystemConfFile = sysrnwfOTARNWFComponent.createFileSymbol("SYS_WINCS_OTA_CONFIGURATION_H", None)
+    syswincsotaSystemConfFile.setType("STRING")
+    syswincsotaSystemConfFile.setOutputName("core.LIST_SYSTEM_CONFIG_H_SYSTEM_SERVICE_CONFIGURATION")
+    syswincsotaSystemConfFile.setSourcePath("system/Ota/templates/system/system_config_wincs02.h.ftl")
+    syswincsotaSystemConfFile.setMarkup(True)
+    syswincsotaSystemConfFile.setOverwrite(True)
+    syswincsotaSystemConfFile.setEnabled(False)
+    syswincsotaSystemConfFile.setDependencies(sysotaWincs02FilesEnable, ["sysWifiRNWF.SYS_RNWF_OTA_SER_ENABLE"])
+
     ###RNWF11 Code generation #####################
     sysrnwf11otaSourceFile = sysrnwfOTARNWFComponent.createFileSymbol("SYS_RNWF11_OTA_SOURCE", None)
     sysrnwf11otaSourceFile.setSourcePath("system/Ota/templates/src/sys_rnwf11_ota_service.c.ftl")
@@ -146,6 +234,8 @@ def instantiateComponent(sysrnwfOTARNWFComponent):
     sysrnwfotaSystemConfFile.setOverwrite(True)
     sysrnwfotaSystemConfFile.setEnabled(False)
     sysrnwfotaSystemConfFile.setDependencies(sysotaRnwf02FilesEnable, ["sysWifiRNWF.SYS_RNWF_OTA_SER_ENABLE"])
+
+
     ########### system header end #################
 
 #-----------------------------------------------------------------------------# 
@@ -160,6 +250,19 @@ def sysotaRnwf02FilesEnable(symbol, event):
     else:
         symbol.setEnabled(False)
 
+def sysotaWincs02FilesEnable(symbol, event):
+    print("WINCS02 Files : OTA  syswincswifiwincs02FilesEnable")
+
+    device = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_WIFI_DEVICE")
+    interface = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_INTERFACE_MODE")
+
+    if ((device == "WINCS02") and (interface == "SPI")):
+        symbol.setEnabled(True)
+        print("sysotaWincs02FilesEnable")
+    else:
+        symbol.setEnabled(False)
+        print("sysotaWincs02FilesDisable")
+
 def sysrnwfotaRnwf11FilesEnable(symbol, event):
     print("ota sysrnwfotarnwf11FilesEnable")
     if(Database.getComponentByID("sysWifiRNWF") == None):
@@ -169,7 +272,7 @@ def sysrnwfotaRnwf11FilesEnable(symbol, event):
     device = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_WIFI_DEVICE")
     interface = Database.getSymbolValue("sysWifiRNWF","SYS_RNWF_INTERFACE_MODE")
 
-    if ((host == "SAME54X-pro") and (device == "RNWF11") and (interface== "UART")):
+    if ((host == "SAME54X-pro") and (device == "RNWF11") and (interface == "UART")):
         print("OTA File : Host and Device are SUPPORTED - RN")
         symbol.setEnabled(True)
     else:
@@ -257,13 +360,45 @@ def sysotaSubMenuVisible(symbol, event):
         symbol.setVisible(True)
     else:
         symbol.setVisible(False)
-        
+
+def sysotaDFUautoMenu(symbol, event):
+    if (event["value"] == True):
+        print("DFU Menu Visible.")
+        symbol.setVisible(True)
+    else:
+        print("DFU Menu Invisible.")
+        symbol.setVisible(False)
+
+def syswincsdirectotaautoMenu(symbol, event):
+    if (event["value"] == True):
+        print("DFU Menu Visible.")
+        symbol.setVisible(True)
+    else:
+        print("DFU Menu Invisible.")
+        symbol.setVisible(False)
+
+def sysOtawincsMenuEnable(symbol, event):
+    print("Device OTA Menu Visible.")
+    component = symbol.getComponent()
+    device = component.getSymbolValue("SYS_RN_NC_OTA_DEVICE")
+
+    if (device == "WINCS02"):
+        symbol.setVisible(True)
+    else:
+        symbol.setVisible(False)    
+
+def sysOtarnwfMenuEnable(symbol, event):
+    print("Device OTA Menu Visible.")
+    component = symbol.getComponent()
+    device = component.getSymbolValue("SYS_RN_NC_OTA_DEVICE")
+
+    if (device == "RNWF02"):
+        symbol.setVisible(True)
+    else:
+        symbol.setVisible(False)
 
 def destroyComponent(sysrnwfOTARNWFComponent):
-    res = Database.deactivateComponents(["sercom6"])
-    res = Database.deactivateComponents(["drv_sst26"])
-    res = Database.deactivateComponents(["tc0"])
-    res = Database.deactivateComponents(["sys_time"])
+    Database.setSymbolValue("sysWifiRNWF", "SYS_RNWF_OTA_SER_ENABLE", False)
     res = Database.deactivateComponents(["sysOtaRNWF"])
 
     
