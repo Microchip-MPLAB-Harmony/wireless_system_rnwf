@@ -247,7 +247,12 @@ static SYS_RNWF_RESULT_t SYS_RNWF_OTA_DownloadProcess
     static uint16_t result = 0;
     static volatile uint32_t total_rx = 0;
     char *tmpPtr = NULL;
-    
+
+    if (g_otaBuf == NULL)
+    {
+        return SYS_RNWF_FAIL;
+    }
+
     if((total_rx > 0) && (total_rx == g_otaFileSize))
     {
         return SYS_RNWF_PASS;
@@ -271,7 +276,7 @@ static SYS_RNWF_RESULT_t SYS_RNWF_OTA_DownloadProcess
                 if((tmpPtr = (char *)strstr((const char *)g_otaBuf, (const char *)SYS_RNWF_OTA_HTTP_CONTENT_LEN)) != NULL)
                 {
                     char *token = strtok(tmpPtr, "\r\n");
-                    g_otaFileSize = strtol((token+sizeof(SYS_RNWF_OTA_HTTP_CONTENT_LEN)), NULL, 10);
+                    g_otaFileSize = strtol((token+strlen(SYS_RNWF_OTA_HTTP_CONTENT_LEN)), NULL, 10);
                     g_otaCallBackHandler(SYS_RNWF_OTA_EVENT_DWLD_START, (uint8_t *)&g_otaFileSize);
                 }
                 SYS_RNWF_OTA_DBG_MSG("otaFileSize :%d\r\n",g_otaFileSize);
@@ -323,8 +328,22 @@ static SYS_RNWF_RESULT_t SYS_RNWF_OTA_ConfProcess
 )
 {
     int32_t read_size = 0, result = 0;
-    uint8_t *tmpPtr, *buffer = &g_otaBuf[SYS_RNWF_OTA_BUF_LEN_MAX/2];
+    uint8_t *tmpPtr, *buffer;
     SYS_RNWF_OTA_CFG_t otaCfg;
+
+    if (g_otaBuf == NULL)
+    {
+        return SYS_RNWF_FAIL;
+    }
+
+    buffer = &g_otaBuf[SYS_RNWF_OTA_BUF_LEN_MAX/2];
+
+    /* Cap rx_len to available buffer space (leave 1 byte for null terminator) */
+    if (rx_len >= SYS_RNWF_OTA_BUF_LEN_MAX/2)
+    {
+        rx_len = (SYS_RNWF_OTA_BUF_LEN_MAX/2) - 1;
+    }
+
     while(rx_len > 0)
     {
         if((result = SYS_RNWF_NET_TcpSockRead(socket, rx_len, buffer)) > 0 )
@@ -338,8 +357,11 @@ static SYS_RNWF_RESULT_t SYS_RNWF_OTA_ConfProcess
             break;
         }
     }
-    
-    if(strncmp((char *)buffer, SYS_RNWF_OTA_CONF_FW_HDR, strlen(SYS_RNWF_OTA_CONF_FW_HDR)) || strncmp((char *)buffer, SYS_RNWF_OTA_CONF_FS_HDR, strlen(SYS_RNWF_OTA_CONF_FS_HDR)))
+
+    /* Null-terminate the buffer for safe string operations */
+    buffer[read_size] = '\0';
+
+    if(!strncmp((char *)buffer, SYS_RNWF_OTA_CONF_FW_HDR, strlen(SYS_RNWF_OTA_CONF_FW_HDR)) || !strncmp((char *)buffer, SYS_RNWF_OTA_CONF_FS_HDR, strlen(SYS_RNWF_OTA_CONF_FS_HDR)))
     {
         char *args[SYS_OTA_CFG_PARAM_MAX] = {0, 0, 0, 0}, *token;
         uint8_t idx = 0;
@@ -491,12 +513,19 @@ static uint8_t send_request_cmd_data(uint8_t cmd, uint8_t *data, uint32_t dataLe
 
 
 static uint8_t send_request(uint8_t cmd, uint8_t *data, int dataLen) {
-    uint8_t req[SYS_RNWF_OTA_HEADER_SIZE + SYS_RNWF_OTA_CMD_ONLY_EXTRA_SIZE + dataLen];
+    /* Fixed-size buffer replaces VLA to prevent stack overflow on embedded targets */
+    #define SYS_RNWF_OTA_SEND_REQ_MAX_DATA  64
+    uint8_t req[SYS_RNWF_OTA_HEADER_SIZE + SYS_RNWF_OTA_CMD_ONLY_EXTRA_SIZE + SYS_RNWF_OTA_SEND_REQ_MAX_DATA];
     int resp;
     int cnt = 10;
     uint8_t byteResp;
-    
-    memset (req, 0, sizeof(req));
+
+    if (dataLen < 0 || dataLen > SYS_RNWF_OTA_SEND_REQ_MAX_DATA)
+    {
+        return SYS_RNWF_OTA_BL_RESP_NONE;
+    }
+
+    memset (req, 0, SYS_RNWF_OTA_HEADER_SIZE + SYS_RNWF_OTA_CMD_ONLY_EXTRA_SIZE + dataLen);
     
     req[0] = (uint8_t)(SYS_RNWF_OTA_BL_GUARD & 0xFF);        // store the least significant byte
     req[1] = (uint8_t)((SYS_RNWF_OTA_BL_GUARD >> 8) & 0xFF); 
@@ -723,9 +752,20 @@ bool SYS_RNWF_OTA_FlashErase
     void
 )
 {
+    uint32_t timeout = 1000000U;
+    DRV_SST26_TRANSFER_STATUS status;
+
     DRV_SST26_ChipErase( g_flashData.handle );
-    while(DRV_SST26_TRANSFER_COMPLETED != DRV_SST26_TransferStatusGet(g_flashData.handle) );
-    return true;
+    do {
+        status = DRV_SST26_TransferStatusGet(g_flashData.handle);
+        if (--timeout == 0U)
+        {
+            SYS_RNWF_OTA_DBG_MSG("ERROR: Flash erase timeout\r\n");
+            return false;
+        }
+    } while (status == DRV_SST26_TRANSFER_BUSY);
+
+    return (status == DRV_SST26_TRANSFER_COMPLETED);
 }
 
 /* To Erase SST26 Flash */
@@ -889,7 +929,7 @@ void SYS_RNWF_OTA_ProgramDfu
         
         case SYS_RNWF_PROGRAM_DFU_ERASE:
         {
-            if(SYS_RNWF_OTA_SrvCtrl(SYS_RNWF_OTA_DFU_ERASE, (void *)&ota_chunk.chunk_addr) == SYS_RNWF_PASS)
+            if(SYS_RNWF_OTA_SrvCtrl(SYS_RNWF_OTA_DFU_ERASE, (void *)&ota_chunk) == SYS_RNWF_PASS)
             {
                 program_event = SYS_RNWF_PROGRAM_FLASH_READ;
             }
@@ -993,11 +1033,14 @@ SYS_RNWF_RESULT_t SYS_RNWF_OTA_SrvCtrl
             SYS_RNWF_OTA_CFG_t *otaCfg = (SYS_RNWF_OTA_CFG_t *)input;
             
             char temp_buff[100] = {'\0'};
-            char str1[] = "GET /";
-            char str2[] = " HTTP/1.1\r\n Connection: Keep-Alive\r\n\r\n";
-            memcpy(temp_buff, str1,strlen(str1));
-            memcpy(&temp_buff[strlen(str1)], otaCfg->file,strlen(otaCfg->file) );
-            memcpy(&temp_buff[strlen(str1) + strlen(otaCfg->file)], str2, strlen(str2) );
+            int needed = snprintf(temp_buff, sizeof(temp_buff),
+                "GET /%s HTTP/1.1\r\n Connection: Keep-Alive\r\n\r\n", otaCfg->file);
+            if (needed < 0 || (size_t)needed >= sizeof(temp_buff))
+            {
+                SYS_RNWF_OTA_DBG_MSG("ERROR: HTTP request too long\r\n");
+                result = SYS_RNWF_FAIL;
+                break;
+            }
             
             memcpy(g_otaBuf, temp_buff, sizeof(temp_buff));
             #if SYS_RNWF_OTA_DFU_DEBUG

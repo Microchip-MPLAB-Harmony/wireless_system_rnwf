@@ -79,6 +79,9 @@ Copyright (C) 2020 released Microchip Technology Inc.  All rights reserved.
 /*Wi-Fi max Callback service*/
 #define SYS_RNWF_WIFI_SERVICE_CB_MAX     2
 
+/* Handle for WIFI Configurations */
+typedef void * SYS_RNWF_WIFI_HANDLE_t;
+
 
 
 /**
@@ -216,6 +219,9 @@ typedef struct
     
     /**<Wi-Fi autoconnect, SoftAP */
     uint8_t autoconnect;   
+
+    /**<Wi-Fi Channel number */
+    uint8_t channel;
              
 }SYS_RNWF_WIFI_PARAM_t;
 
@@ -242,7 +248,7 @@ typedef void (*SYS_RNWF_WIFI_CALLBACK_t)(SYS_RNWF_WIFI_EVENT_t event, uint8_t *m
  * @return ::SYS_RNWF_PASS Requested service is handled successfully
  * @return ::SYS_RNWF_FAIL Requested service has failed
  */
-SYS_RNWF_RESULT_t SYS_RNWF_WIFI_SrvCtrl( SYS_RNWF_WIFI_SERVICE_t request, void *input);
+SYS_RNWF_RESULT_t SYS_RNWF_WIFI_SrvCtrl( SYS_RNWF_WIFI_SERVICE_t request, SYS_RNWF_WIFI_HANDLE_t wifiHandle);
 
 #endif	/* RNWF_WIFI_SERVICE_H */
 

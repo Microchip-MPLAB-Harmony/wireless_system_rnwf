@@ -69,7 +69,7 @@ Copyright (C) 2020 released Microchip Technology Inc.  All rights reserved.
 #define SYS_RNWF_WIFI_SET_AP_HIDDEN  "AT+WAPC=5,%d\r\n"
 
 #define SYS_RNWF_WIFI_POW_SAVE_MODE "AT+WIFIC=20,1\r\n"
-#define SYS_RNWF_WIFI_SET_REG_DONAIN    "AT+WIFIC=10,\"%s\"\r\n"
+#define SYS_RNWF_WIFI_SET_REG_DOMAIN    "AT+WIFIC=10,\"%s\"\r\n"
 #define SYS_RNWF_WIFI_PSV_SCAN      "AT+WSCN=0\r\n"
 #define SYS_RNWF_WIFI_ACT_SCAN      "AT+WSCN=1\r\n"
 #define SYS_RNWF_WIFI_DNS_CMD       "AT+DNSRESOLV=1,\"%s\"\r\n"
@@ -326,7 +326,7 @@ typedef struct
  * @param[out]  msg Received data related to the passed event   
  * 
  */
-typedef void (*SYS_RNWF_WIFI_CALLBACK_t)(SYS_RNWF_WIFI_EVENT_t event, SYS_RNWF_WIFI_HANDLE_t *wifiHandle);
+typedef void (*SYS_RNWF_WIFI_CALLBACK_t)(SYS_RNWF_WIFI_EVENT_t event, SYS_RNWF_WIFI_HANDLE_t wifiHandle);
 
 /**
  * @brief Wi-Fi Service Layer API to handle STA and SoftAP mode operations.

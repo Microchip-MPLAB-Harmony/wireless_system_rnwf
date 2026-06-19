@@ -133,25 +133,36 @@ SYS_RNWF_RESULT_t SYS_RNWF_WIFI_SrvCtrl( SYS_RNWF_WIFI_SERVICE_t request, SYS_RN
             if(wifi_config->mode == SYS_RNWF_WIFI_MODE_STA)
             {
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SOFTAP_DISABLE);
+                if(SYS_RNWF_PASS != result) break;
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_DISCONNECT);
-                result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_STA_SSID, wifi_config->ssid);            
+                if(SYS_RNWF_PASS != result) break;
+                result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_STA_SSID, wifi_config->ssid);
+                if(SYS_RNWF_PASS != result) break;
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_STA_PWD, wifi_config->passphrase);
+                if(SYS_RNWF_PASS != result) break;
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_STA_SEC, wifi_config->security);
+                if(SYS_RNWF_PASS != result) break;
                 if(wifi_config->autoconnect)
                 {
                     result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL,SYS_RNWF_WIFI_SOFTAP_DISABLE );
-                    
+                    if(SYS_RNWF_PASS != result) break;
                     result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_CONNECT);
                 }
             }
             else if(wifi_config->mode == SYS_RNWF_WIFI_MODE_AP)                
             {
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_DISCONNECT);
-                result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SOFTAP_DISABLE);       
-                result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_SSID, wifi_config->ssid);     
+                if(SYS_RNWF_PASS != result) break;
+                result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SOFTAP_DISABLE);
+                if(SYS_RNWF_PASS != result) break;
+                result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_SSID, wifi_config->ssid);
+                if(SYS_RNWF_PASS != result) break;
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_PWD, wifi_config->passphrase);
+                if(SYS_RNWF_PASS != result) break;
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_SEC, wifi_config->security);
+                if(SYS_RNWF_PASS != result) break;
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_CHANNEL, wifi_config->channel);
+                if(SYS_RNWF_PASS != result) break;
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SOFTAP_ENABLE);
             }
             break;            
@@ -184,7 +195,7 @@ SYS_RNWF_RESULT_t SYS_RNWF_WIFI_SrvCtrl( SYS_RNWF_WIFI_SERVICE_t request, SYS_RN
         case SYS_RNWF_WIFI_SET_REGULATORY_DOMAIN:
         {
             const char *reg_domain = (const char *)wifiHandle;
-            result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL,NULL, SYS_RNWF_WIFI_SET_REG_DONAIN, reg_domain);
+            result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL,NULL, SYS_RNWF_WIFI_SET_REG_DOMAIN, reg_domain);
             
             break;
         }

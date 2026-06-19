@@ -3,6 +3,30 @@
 
 # Microchip MPLAB® Harmony 3 Release Notes
 
+### Harmony 3 wireless system service for RNWF02 and WINCS02 v3.2.0
+
+### Bug Fixes
+
+- **Net System Service (WINCS02):** Fix peer disconnect handling, TLS server socket setup, socket cleanup on close, and recv error reporting
+- **Wi-Fi System Service (WINCS02):** Fix callback NULL safety, scan continuation, IPv6 link-local detection, and power-save handle usage
+- **Wi-Fi System Service (RNWF02):** Fix AT command error handling in STA/AP config, regulatory domain typo, and callback typedef
+- **Wi-Fi System Service (RNWF11):** Fix BSSID AT command, AP channel configuration, and parameter struct alignment
+- **OTA System Service (RNWF02/RNWF11):** Fix DFU flash write logic, HTTP request buffer overflow, Content-Length parsing, and add flash erase timeout and NULL guards
+- **OTA System Service (WINCS02):** Add NULL check for OTA callback handler
+
+### Known Issues
+- None
+
+### Development Tools
+
+* [MPLAB® X IDE v6.25](https://www.microchip.com/mplab/mplab-x-ide)
+* [MPLAB® XC32 C/C++ Compiler v4.60](https://www.microchip.com/mplab/compilers)
+* MPLAB® X IDE plug-ins:
+    * MPLAB® Code Configurator (MCC) v5.6.2  
+* SAM E54 DFP  : v3.9.244
+* SAM9X75 DFP : v1.9.170
+
+
 ### Harmony 3 wireless system service for RNWF02 and WINCS02 v3.1.0
 
 ### New Features

@@ -4,19 +4,16 @@ package:
   type: "api"
   status: "production"
   required: false
-  version: "v3.1.0"
+  version: "v3.2.0"
   
   dependencies:
     - name: "csp"
       type: "package"
-      version: "v3.23.0"
+      version: "v3.25.2"
     - name: "core"
       type: "package"
-      version: "v3.15.5"
-    - name: "bsp"
-      type: "package"
-      version: "v3.23.0"
+      version: "v3.16.3"
     - name: "wireless_wifi"
       type: "package"
-      version: "v3.12.2"
+      version: "v3.13.0"
 

@@ -67,7 +67,7 @@ SYS_RNWF_WIFI_CALLBACK_t g_wifiCallBackHandler[SYS_RNWF_WIFI_SERVICE_CB_MAX];
 /* ************************************************************************** */
 
 /*Wi-Fi Service Control Function*/
-SYS_RNWF_RESULT_t SYS_RNWF_WIFI_SrvCtrl( SYS_RNWF_WIFI_SERVICE_t request, void *input)  {
+SYS_RNWF_RESULT_t SYS_RNWF_WIFI_SrvCtrl( SYS_RNWF_WIFI_SERVICE_t request, SYS_RNWF_WIFI_HANDLE_t wifiHandle)  {
 
     SYS_RNWF_RESULT_t result = SYS_RNWF_PASS;
     
@@ -97,14 +97,14 @@ SYS_RNWF_RESULT_t SYS_RNWF_WIFI_SrvCtrl( SYS_RNWF_WIFI_SERVICE_t request, void *
          /**<Configure the Wi-Fi channel */    
         case SYS_RNWF_SET_WIFI_AP_CHANNEL:
         {            
-            result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_CHANNEL, *(uint8_t *)input);
+            result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_CHANNEL, *(uint8_t *)wifiHandle);
             break;            
         }   
         
         /**<Configure the Access point's BSSID */ 
         case SYS_RNWF_SET_WIFI_BSSID:
         {            
-            result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_CHANNEL, (uint8_t *)input);            
+            result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_STA_BSSID, (uint8_t *)wifiHandle);            
             break;
         } 
         
@@ -117,14 +117,14 @@ SYS_RNWF_RESULT_t SYS_RNWF_WIFI_SrvCtrl( SYS_RNWF_WIFI_SERVICE_t request, void *
         /**<Configure Hidden mode SSID in SoftAP mode*/     
         case SYS_RNWF_SET_WIFI_HIDDEN:
         {            
-            result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_HIDDEN, *(uint8_t *)input);            
+            result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_HIDDEN, *(uint8_t *)wifiHandle);            
             break;
         }  
 
         /**<Configure the Wi-Fi parameters */ 
         case SYS_RNWF_SET_WIFI_PARAMS:  
         {
-            SYS_RNWF_WIFI_PARAM_t *wifi_config = (SYS_RNWF_WIFI_PARAM_t *)input;
+            SYS_RNWF_WIFI_PARAM_t *wifi_config = (SYS_RNWF_WIFI_PARAM_t *)wifiHandle;
             
             if(wifi_config->mode == SYS_RNWF_WIFI_MODE_STA)
             {
@@ -142,13 +142,12 @@ SYS_RNWF_RESULT_t SYS_RNWF_WIFI_SrvCtrl( SYS_RNWF_WIFI_SERVICE_t request, void *
             }
             else if(wifi_config->mode == SYS_RNWF_WIFI_MODE_AP)                
             {                   
-                uint8_t default_channel = 6;
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_DISCONNECT);//AT+WSTA=0\r\n
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SOFTAP_DISABLE); //AT+WAP=0\r\n               
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_SSID, wifi_config->ssid);  //AT+WAPC=1,"wsn"          
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_PWD, wifi_config->passphrase);//AT+WAPC=3,\"%s\"\r\n
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_SEC, wifi_config->security);//AT+WAPC=2,%d\r\n
-                result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_CHANNEL, default_channel);    //AT+WAPC=4,%d\r\n
+                result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SET_AP_CHANNEL, wifi_config->channel);    //AT+WAPC=4,%d\r\n
                 result = SYS_RNWF_CMD_SEND_OK_WAIT(NULL, NULL, SYS_RNWF_WIFI_SOFTAP_ENABLE);//AT+WAP=1
             }
             break;            
@@ -171,20 +170,20 @@ SYS_RNWF_RESULT_t SYS_RNWF_WIFI_SrvCtrl( SYS_RNWF_WIFI_SERVICE_t request, void *
         /**<Regester the call back for async events */    
         case SYS_RNWF_WIFI_SET_CALLBACK:  
         {
-            g_wifiCallBackHandler[1] = (SYS_RNWF_WIFI_CALLBACK_t)input;
+            g_wifiCallBackHandler[1] = (SYS_RNWF_WIFI_CALLBACK_t)wifiHandle;
             break;
         }
 
         /**<Regester the call back for async events */
         case SYS_RNWF_WIFI_SET_SRVC_CALLBACK:                        
         {
-            g_wifiCallBackHandler[0] = (SYS_RNWF_WIFI_CALLBACK_t)input;  
+            g_wifiCallBackHandler[0] = (SYS_RNWF_WIFI_CALLBACK_t)wifiHandle;  
             break;
         }
         case SYS_RNWF_WIFI_GET_CALLBACK:
         {
             SYS_RNWF_WIFI_CALLBACK_t *callBackHandler;
-            callBackHandler = (SYS_RNWF_WIFI_CALLBACK_t *)input;
+            callBackHandler = (SYS_RNWF_WIFI_CALLBACK_t *)wifiHandle;
             
             callBackHandler[0] = g_wifiCallBackHandler[0];
             callBackHandler[1] = g_wifiCallBackHandler[1];

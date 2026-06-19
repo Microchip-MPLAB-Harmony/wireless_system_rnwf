@@ -17,3 +17,7 @@
 **/*.KEIL/Objects
 **/*.KEIL/*.uvguix.*
 Gemfile*
+
+AGENTS.md
+.agent_tasks/
+.opencode/

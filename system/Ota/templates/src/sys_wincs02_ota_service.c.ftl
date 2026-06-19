@@ -86,6 +86,11 @@ static void SYS_WINCS_OTA_statusCallback
     WDRV_WINC_OTA_UPDATE_STATUS status
 )
 {
+    if (g_otaCallBackHandler == NULL)
+    {
+        return;
+    }
+
     switch(status)
     {
         case WDRV_WINC_OTA_STATUS_STARTED:
